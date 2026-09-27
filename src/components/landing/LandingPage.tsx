@@ -138,77 +138,84 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         </div>
       </header>
 
-      {/* 2. HERO SECTION */}
+      {/* 2. HERO SECTION WITH ANIMATED MOVING RAINBOW GRADIENT */}
       <section
         id="beranda"
-        className="relative bg-gradient-to-br from-emerald-900 via-emerald-800 to-teal-950 text-white py-16 px-4 overflow-hidden border-b-4 border-amber-400"
+        className="relative rainbow-animated-hero text-white py-16 px-4 overflow-hidden border-b-4 border-amber-400 shadow-xl"
       >
+        {/* Soft Vignette & Ambient Glow for high contrast & elegance */}
+        <div className="absolute inset-0 bg-slate-950/30 backdrop-blur-[1px] pointer-events-none"></div>
+        <div className="absolute -top-32 -left-32 w-96 h-96 bg-white/15 rounded-full blur-3xl pointer-events-none"></div>
+        <div className="absolute -bottom-32 -right-32 w-96 h-96 bg-amber-300/20 rounded-full blur-3xl pointer-events-none"></div>
+        {/* Animated Rainbow Bottom Accent Line */}
+        <div className="absolute bottom-0 left-0 right-0 h-1.5 rainbow-border-bottom"></div>
+
         <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 items-center relative z-10">
           <div className="lg:col-span-8 space-y-4">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-700/50 border border-emerald-500/40 text-amber-300 text-xs font-bold tracking-wide">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/20 border border-white/35 backdrop-blur-md text-amber-300 text-xs font-black tracking-wide shadow-sm">
               <Sparkles className="w-3.5 h-3.5" />
               <span>
                 {settings.tingkatWilayah || 'Portal Resmi'} · Tahun {settings.tahun}
               </span>
             </div>
 
-            <h2 className="text-2xl sm:text-4xl font-extrabold tracking-tight leading-tight text-white">
+            <h2 className="text-2xl sm:text-4xl font-black tracking-tight leading-tight text-white drop-shadow-md">
               {settings.namaPorseni}
             </h2>
 
-            <p className="text-sm sm:text-base font-medium text-emerald-100 italic border-l-3 border-amber-400 pl-3">
+            <p className="text-sm sm:text-base font-bold text-amber-200 italic border-l-4 border-amber-300 pl-3.5 drop-shadow-sm">
               "{settings.tema}"
             </p>
 
-            <p className="text-xs sm:text-sm text-emerald-200/90 max-w-2xl leading-relaxed">
+            <p className="text-xs sm:text-sm text-white/95 max-w-2xl leading-relaxed drop-shadow-xs font-medium">
               Sistem informasi pengelolaan kegiatan Pekan Olahraga dan Seni, integrasi pendaftaran atlet, verifikasi berkas persyaratan, rekapitulasi nilai, serta pencetakan kartu tanda peserta resmi.
             </p>
 
-            {/* Hero CTAs: ONLY Validasi Kartu Peserta as requested in point 1 */}
+            {/* Hero CTA: Validasi Kartu Peserta with High Contrast & Vibrancy */}
             <div className="pt-2 flex flex-wrap gap-3">
               <button
                 onClick={onOpenValidasi}
-                className="px-5 py-2.5 text-xs font-bold text-emerald-950 bg-amber-400 hover:bg-amber-300 rounded-lg shadow-md transition-all flex items-center gap-2"
+                className="px-6 py-3 text-xs font-black text-slate-950 bg-amber-400 hover:bg-amber-300 active:scale-[0.98] rounded-xl shadow-lg hover:shadow-2xl transition-all flex items-center gap-2 border border-amber-300 cursor-pointer"
               >
-                <ShieldCheck className="w-4 h-4 text-emerald-950" />
+                <ShieldCheck className="w-4 h-4 text-slate-950" />
                 <span>Validasi Kartu Peserta</span>
               </button>
             </div>
 
-            {/* Quick Stats Highlights with colorful cards */}
+            {/* Quick Stats Highlights with Frosted Glass Colorful Cards */}
             <div className="pt-6 grid grid-cols-3 gap-3 max-w-lg text-center sm:text-left">
-              <div className="p-3 rounded-xl bg-white/10 border border-white/15 backdrop-blur-xs">
-                <span className="block text-xl font-extrabold text-white font-mono">
+              <div className="p-3.5 rounded-2xl bg-white/20 hover:bg-white/30 border border-white/30 backdrop-blur-md shadow-md transition-all">
+                <span className="block text-2xl font-black text-white font-mono drop-shadow-xs">
                   {cabangList.length}
                 </span>
-                <span className="text-[11px] text-emerald-200">Cabang Lomba</span>
+                <span className="text-[11px] text-white/90 font-semibold">Cabang Lomba</span>
               </div>
-              <div className="p-3 rounded-xl bg-white/10 border border-white/15 backdrop-blur-xs">
-                <span className="block text-xl font-extrabold text-emerald-300 font-mono">
+              <div className="p-3.5 rounded-2xl bg-white/20 hover:bg-white/30 border border-white/30 backdrop-blur-md shadow-md transition-all">
+                <span className="block text-2xl font-black text-emerald-200 font-mono drop-shadow-xs">
                   100%
                 </span>
-                <span className="text-[11px] text-emerald-200">Verifikasi Digital</span>
+                <span className="text-[11px] text-white/90 font-semibold">Verifikasi Digital</span>
               </div>
-              <div className="p-3 rounded-xl bg-white/10 border border-white/15 backdrop-blur-xs">
-                <span className="block text-xl font-extrabold text-amber-300 font-mono">
+              <div className="p-3.5 rounded-2xl bg-white/20 hover:bg-white/30 border border-white/30 backdrop-blur-md shadow-md transition-all">
+                <span className="block text-2xl font-black text-amber-300 font-mono drop-shadow-xs">
                   {settings.tahun}
                 </span>
-                <span className="text-[11px] text-emerald-200">Tahun Kegiatan</span>
+                <span className="text-[11px] text-white/90 font-semibold">Tahun Kegiatan</span>
               </div>
             </div>
           </div>
 
-          {/* Hero Right Visual Emblem */}
+          {/* Hero Right Visual Emblem Card with Glassmorphism */}
           <div className="lg:col-span-4 flex justify-center">
-            <div className="relative p-6 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 shadow-2xl text-center max-w-xs">
-              <PorseniEmblem size={130} className="mx-auto drop-shadow-md mb-4" />
-              <h3 className="text-sm font-extrabold text-amber-300 uppercase tracking-wider">
+            <div className="relative p-7 rounded-3xl bg-white/20 backdrop-blur-xl border border-white/35 shadow-2xl text-center max-w-xs hover:border-white/50 transition-all">
+              <PorseniEmblem size={135} className="mx-auto drop-shadow-lg mb-4" />
+              <h3 className="text-sm font-black text-amber-300 uppercase tracking-wider drop-shadow-sm leading-snug">
                 {settings.namaPenyelenggara}
               </h3>
-              <p className="text-[11px] text-emerald-100 mt-1">
+              <p className="text-[11px] text-white/90 font-medium mt-1">
                 {settings.tingkatWilayah || 'Penyelenggara Kegiatan'}
               </p>
-              <div className="mt-3 py-1.5 px-3 bg-emerald-950/60 rounded-md border border-emerald-600/50 text-[10px] text-emerald-200 font-mono">
+              <div className="mt-4 py-1.5 px-3 bg-black/40 backdrop-blur-md rounded-lg border border-white/25 text-[11px] text-amber-200 font-mono font-bold shadow-inner">
                 Periode: {settings.tahun}
               </div>
             </div>

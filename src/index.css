@@ -26,6 +26,53 @@
   background: #94a3b8;
 }
 
+/* Rainbow Animated Moving Gradient */
+@keyframes rainbow-flow {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.rainbow-animated-hero {
+  background: linear-gradient(
+    135deg,
+    #e11d48 0%,
+    #ea580c 14%,
+    #eab308 28%,
+    #10b981 42%,
+    #06b6d4 56%,
+    #3b82f6 70%,
+    #8b5cf6 84%,
+    #ec4899 92%,
+    #e11d48 100%
+  );
+  background-size: 350% 350%;
+  animation: rainbow-flow 10s ease-in-out infinite;
+}
+
+.rainbow-border-bottom {
+  background: linear-gradient(
+    90deg,
+    #e11d48,
+    #ea580c,
+    #eab308,
+    #10b981,
+    #06b6d4,
+    #3b82f6,
+    #8b5cf6,
+    #ec4899,
+    #e11d48
+  );
+  background-size: 300% 100%;
+  animation: rainbow-flow 6s linear infinite;
+}
+
 /* Print Styles */
 @media print {
   body {
