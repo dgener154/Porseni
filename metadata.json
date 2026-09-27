@@ -1,0 +1,6 @@
+{
+  "name": "PORSENI DIGITAL",
+  "description": "Sistem Informasi Resmi Pengelolaan Pekan Olahraga dan Seni untuk Panitia dan Lembaga Peserta.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
