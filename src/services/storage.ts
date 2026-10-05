@@ -49,6 +49,7 @@ export async function hashPassword(password: string): Promise<string> {
 const defaultPengaturan: PengaturanSistem = {
   namaWebsite: 'PORSENI DIGITAL',
   namaPorseni: 'PEKAN OLAHRAGA DAN SENI (PORSENI)',
+  logoUrl: undefined,
   tahun: '2026',
   tema: 'Sportifitas Mengukir Prestasi, Seni Memperhalus Budi Pekerti',
   namaPenyelenggara: 'Panitia Pelaksana PORSENI',
@@ -1063,6 +1064,13 @@ export class StorageService {
 
   public static savePengaturan(settings: PengaturanSistem): void {
     localStorage.setItem(STORAGE_KEYS.PENGATURAN, JSON.stringify(settings));
+    try {
+      window.dispatchEvent(
+        new CustomEvent('porseni_pengaturan_updated', { detail: settings })
+      );
+    } catch {
+      // Ignore in non-browser env
+    }
   }
 
   public static getPeriode(): Periode[] {

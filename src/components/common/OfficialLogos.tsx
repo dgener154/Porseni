@@ -1,9 +1,77 @@
 import React from 'react';
 
-export const PorseniEmblem: React.FC<{ className?: string; size?: number }> = ({
+export const PorseniEmblem: React.FC<{
+  className?: string;
+  size?: number;
+  logoUrl?: string;
+  alt?: string;
+}> = ({
   className = '',
   size = 48,
+  logoUrl: propLogoUrl,
+  alt = 'Logo Porseni',
 }) => {
+  const [currentLogo, setCurrentLogo] = React.useState<string | undefined>(() => {
+    if (propLogoUrl) return propLogoUrl;
+    try {
+      const data = localStorage.getItem('porseni_pengaturan_v1');
+      if (data) {
+        const parsed = JSON.parse(data);
+        return parsed.logoUrl || undefined;
+      }
+    } catch {
+      // ignore
+    }
+    return undefined;
+  });
+
+  React.useEffect(() => {
+    if (propLogoUrl !== undefined) {
+      setCurrentLogo(propLogoUrl);
+      return;
+    }
+
+    const checkStorage = (e?: Event) => {
+      try {
+        const customEvent = e as CustomEvent;
+        if (customEvent && customEvent.detail && customEvent.detail.logoUrl !== undefined) {
+          setCurrentLogo(customEvent.detail.logoUrl || undefined);
+          return;
+        }
+        const data = localStorage.getItem('porseni_pengaturan_v1');
+        if (data) {
+          const parsed = JSON.parse(data);
+          setCurrentLogo(parsed.logoUrl || undefined);
+        } else {
+          setCurrentLogo(undefined);
+        }
+      } catch {
+        // ignore
+      }
+    };
+
+    window.addEventListener('porseni_pengaturan_updated', checkStorage);
+    window.addEventListener('storage', checkStorage);
+    return () => {
+      window.removeEventListener('porseni_pengaturan_updated', checkStorage);
+      window.removeEventListener('storage', checkStorage);
+    };
+  }, [propLogoUrl]);
+
+  if (currentLogo) {
+    return (
+      <img
+        src={currentLogo}
+        alt={alt}
+        width={size}
+        height={size}
+        style={{ width: `${size}px`, height: `${size}px` }}
+        className={`object-contain inline-block shrink-0 ${className}`}
+        onError={() => setCurrentLogo(undefined)}
+      />
+    );
+  }
+
   return (
     <svg
       width={size}

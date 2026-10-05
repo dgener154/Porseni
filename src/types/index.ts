@@ -184,6 +184,7 @@ export interface FotoKegiatan {
 export interface PengaturanSistem {
   namaWebsite: string; // e.g. "PORSENI DIGITAL" or configurable name
   namaPorseni: string;
+  logoUrl?: string; // Custom uploaded logo Porseni (data URL or image URL)
   tahun: string;
   tema: string;
   namaPenyelenggara: string;

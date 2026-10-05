@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { CabangLomba, DokumenPeserta, Lembaga, Peserta, PesertaStatus } from '../../types';
 import { StorageService } from '../../services/storage';
 import { PesertaStatusBadge, ConfirmModal } from '../common/UIComponents';
 import { KartuPesertaView } from '../common/KartuPesertaView';
+import { getOpsiKelasByJenjang, getLabelJenjang } from '../../utils/jenjangHelper';
 import {
   Plus,
   Search,
@@ -51,6 +52,9 @@ export const LembagaPeserta: React.FC<LembagaPesertaProps> = ({
   const [deleteConfirmPeserta, setDeleteConfirmPeserta] = useState<Peserta | null>(null);
   const [managingDocsPeserta, setManagingDocsPeserta] = useState<Peserta | null>(null);
 
+  // Dynamic class options based on Lembaga's educational level (jenjang)
+  const opsiKelas = useMemo(() => getOpsiKelasByJenjang(lembaga.jenjang), [lembaga.jenjang]);
+
   // Form inputs state
   const [formInput, setFormInput] = useState({
     nis: '',
@@ -85,6 +89,8 @@ export const LembagaPeserta: React.FC<LembagaPesertaProps> = ({
       return;
     }
 
+    const initialKelas = opsiKelas[0] || 'Kelas X';
+
     setEditingPeserta(null);
     setFormInput({
       nis: '',
@@ -94,7 +100,7 @@ export const LembagaPeserta: React.FC<LembagaPesertaProps> = ({
       tempatLahir: '',
       tanggalLahir: '',
       jenisKelamin: 'L',
-      kelas: 'X',
+      kelas: initialKelas,
       tingkat: lembaga.jenjang,
       cabangId: cabangList[0]?.id || '',
       kategoriLomba: cabangList[0]?.kategori || 'OLAHRAGA',
@@ -804,17 +810,32 @@ export const LembagaPeserta: React.FC<LembagaPesertaProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Kelas Siswa <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    type="text"
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-bold text-slate-700">
+                      Kelas Siswa / Mahasiswa <span className="text-rose-500">*</span>
+                    </label>
+                    <span className="text-[10px] text-emerald-800 font-semibold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                      Jenjang {getLabelJenjang(lembaga.jenjang)}
+                    </span>
+                  </div>
+                  <select
                     required
                     value={formInput.kelas}
                     onChange={e => setFormInput({ ...formInput, kelas: e.target.value })}
-                    placeholder="Contoh: X MIPA 1 atau VII B..."
-                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-600"
-                  />
+                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-600 bg-white font-medium text-slate-800"
+                  >
+                    <option value="">-- Pilih Kelas --</option>
+                    {opsiKelas.map(k => (
+                      <option key={k} value={k}>
+                        {k}
+                      </option>
+                    ))}
+                    {formInput.kelas && !opsiKelas.includes(formInput.kelas) && (
+                      <option key={formInput.kelas} value={formInput.kelas}>
+                        {formInput.kelas}
+                      </option>
+                    )}
+                  </select>
                 </div>
               </div>
 

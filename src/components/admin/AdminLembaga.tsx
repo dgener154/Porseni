@@ -603,7 +603,7 @@ export const AdminLembaga: React.FC<AdminLembagaProps> = ({
               <div className="flex items-center gap-2.5">
                 <Building2 className="w-5 h-5 text-amber-300" />
                 <div>
-                  <h3 className="text-sm font-bold">Formulir Pendaftaran Awal Lembaga</h3>
+                  <h3 className="text-sm font-bold">Formulir Pendaftaran Lembaga</h3>
                   <p className="text-[11px] text-emerald-200">
                     Oleh Panitia / Administrator Sistem PORSENI
                   </p>
@@ -625,10 +625,10 @@ export const AdminLembaga: React.FC<AdminLembagaProps> = ({
                 </p>
               </div>
 
-              {/* 1. NPSN */}
+              {/* NPSN */}
               <div>
                 <label className="block font-bold text-slate-700 mb-1">
-                  1. NPSN (Nomor Pokok Sekolah Nasional) <span className="text-rose-500">*</span>
+                  NPSN (Nomor Pokok Sekolah Nasional) <span className="text-rose-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -640,10 +640,10 @@ export const AdminLembaga: React.FC<AdminLembagaProps> = ({
                 />
               </div>
 
-              {/* 2. NSM */}
+              {/* NSM */}
               <div>
                 <label className="block font-bold text-slate-700 mb-1">
-                  2. NSM (Nomor Statistik Madrasah / Sekolah) <span className="text-slate-400 font-normal">(Bila ada)</span>
+                  NSM (Nomor Statistik Madrasah / Sekolah) <span className="text-slate-400 font-normal">(Bila ada)</span>
                 </label>
                 <input
                   type="text"
@@ -654,10 +654,10 @@ export const AdminLembaga: React.FC<AdminLembagaProps> = ({
                 />
               </div>
 
-              {/* 3. NAMA LEMBAGA */}
+              {/* NAMA LEMBAGA */}
               <div>
                 <label className="block font-bold text-slate-700 mb-1">
-                  3. NAMA LEMBAGA <span className="text-rose-500">*</span>
+                  NAMA LEMBAGA <span className="text-rose-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -669,28 +669,27 @@ export const AdminLembaga: React.FC<AdminLembagaProps> = ({
                 />
               </div>
 
-              {/* 4. JENJANG */}
+              {/* JENJANG & STATUS */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">
-                    4. JENJANG <span className="text-rose-500">*</span>
+                    JENJANG <span className="text-rose-500">*</span>
                   </label>
                   <select
                     value={formLembaga.jenjang}
                     onChange={e => setFormLembaga({ ...formLembaga, jenjang: e.target.value as JenjangLembaga })}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-1 focus:ring-emerald-600 font-medium"
                   >
-                    <option value="MI/SD">MI / SD</option>
-                    <option value="MTs/SMP">MTs / SMP</option>
-                    <option value="MA/SMA/SMK">MA / SMA / SMK</option>
-                    <option value="PERGURUAN TINGGI">Perguruan Tinggi / Umum</option>
+                    <option value="MA/SMA/SMK">SMA / MA / SMK</option>
+                    <option value="MTs/SMP">SMP / MTs</option>
+                    <option value="MI/SD">SD / MI</option>
+                    <option value="PERGURUAN TINGGI">Perguruan Tinggi</option>
                   </select>
                 </div>
 
-                {/* 5. STATUS LEMBAGA */}
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">
-                    5. STATUS LEMBAGA <span className="text-rose-500">*</span>
+                    STATUS LEMBAGA <span className="text-rose-500">*</span>
                   </label>
                   <select
                     value={formLembaga.statusLembaga}
@@ -703,10 +702,10 @@ export const AdminLembaga: React.FC<AdminLembagaProps> = ({
                 </div>
               </div>
 
-              {/* 6. EMAIL LEMBAGA */}
+              {/* EMAIL LEMBAGA */}
               <div>
                 <label className="block font-bold text-slate-700 mb-1">
-                  6. EMAIL LEMBAGA (Akun Login) <span className="text-rose-500">*</span>
+                  EMAIL LEMBAGA (Akun Login) <span className="text-rose-500">*</span>
                 </label>
                 <input
                   type="email"
