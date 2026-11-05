@@ -1,0 +1,110 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Akun pengguna sistem (Admin atau Lembaga)",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "username": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "role": { "type": "string", "enum": ["ADMIN", "LEMBAGA"] },
+        "lembagaId": { "type": "string" },
+        "namaLengkap": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "lastLogin": { "type": "string" }
+      },
+      "required": ["id", "username", "role"]
+    },
+    "Lembaga": {
+      "title": "Lembaga",
+      "description": "Data satuan pendidikan / kontingen terdaftar",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "kodeLembaga": { "type": "string" },
+        "nama": { "type": "string" },
+        "npsn": { "type": "string" },
+        "jenjang": { "type": "string" },
+        "status": { "type": "string" },
+        "alamat": { "type": "string" },
+        "emailLembaga": { "type": "string" },
+        "operatorNama": { "type": "string" },
+        "operatorHp": { "type": "string" },
+        "username": { "type": "string" }
+      },
+      "required": ["id", "nama", "npsn", "jenjang", "status"]
+    },
+    "Peserta": {
+      "title": "Peserta",
+      "description": "Data atlet atau seniman peserta PORSENI",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "lembagaId": { "type": "string" },
+        "nama": { "type": "string" },
+        "nisn": { "type": "string" },
+        "nik": { "type": "string" },
+        "jenisKelamin": { "type": "string", "enum": ["L", "P"] },
+        "kelas": { "type": "string" },
+        "cabangId": { "type": "string" },
+        "kategoriLomba": { "type": "string", "enum": ["OLAHRAGA", "SENI"] },
+        "status": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "lembagaId", "nama", "cabangId", "status"]
+    },
+    "CabangLomba": {
+      "title": "CabangLomba",
+      "description": "Daftar cabang kompetisi olahraga dan seni",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "nama": { "type": "string" },
+        "kode": { "type": "string" },
+        "kategori": { "type": "string", "enum": ["OLAHRAGA", "SENI"] },
+        "kuotaMaks": { "type": "number" },
+        "persyaratan": { "type": "string" }
+      },
+      "required": ["id", "nama", "kode", "kategori"]
+    },
+    "PengaturanSistem": {
+      "title": "PengaturanSistem",
+      "description": "Konfigurasi identitas PORSENI dan integrasi spreadsheet",
+      "type": "object",
+      "properties": {
+        "namaWebsite": { "type": "string" },
+        "namaPorseni": { "type": "string" },
+        "tahun": { "type": "string" },
+        "tema": { "type": "string" },
+        "spreadsheetId": { "type": "string" },
+        "spreadsheetUrl": { "type": "string" },
+        "spreadsheetSyncEnabled": { "type": "boolean" },
+        "lastSyncTime": { "type": "string" }
+      },
+      "required": ["namaPorseni", "tahun"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Koleksi data user dan otorisasi login"
+    },
+    "/lembaga/{lembagaId}": {
+      "schema": "Lembaga",
+      "description": "Koleksi data profil lembaga kontingen"
+    },
+    "/peserta/{pesertaId}": {
+      "schema": "Peserta",
+      "description": "Koleksi peserta lomba dan status verifikasi"
+    },
+    "/cabang/{cabangId}": {
+      "schema": "CabangLomba",
+      "description": "Koleksi cabang lomba olahraga & seni"
+    },
+    "/pengaturan/{configId}": {
+      "schema": "PengaturanSistem",
+      "description": "Dokumen konfigurasi global sistem PORSENI"
+    }
+  }
+}

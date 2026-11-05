@@ -2,6 +2,7 @@ import {
   AuditLog,
   CabangLomba,
   FotoKegiatan,
+  VideoKegiatan,
   JadwalKegiatan,
   Lembaga,
   PengaturanSistem,
@@ -19,6 +20,7 @@ const STORAGE_KEYS = {
   PENGUMUMAN: 'porseni_pengumuman_v1',
   JADWAL: 'porseni_jadwal_v1',
   FOTO_KEGIATAN: 'porseni_foto_kegiatan_v1',
+  VIDEO_KEGIATAN: 'porseni_video_kegiatan_v1',
   PENGATURAN: 'porseni_pengaturan_v1',
   PERIODE: 'porseni_periode_v1',
   AUDIT_LOGS: 'porseni_audit_logs_v1',
@@ -124,6 +126,75 @@ const defaultFotoKegiatan: FotoKegiatan[] = [
     kategori: 'JUARA',
     tanggal: '2026-09-30',
     imageUrl: 'https://images.unsplash.com/photo-1569517282132-25d22f4573e6?w=800&auto=format&fit=crop&q=80',
+    periodeId: 'PRD-2026',
+  },
+];
+
+const defaultVideoKegiatan: VideoKegiatan[] = [
+  {
+    id: 'VID-001',
+    judul: 'Upacara Pembukaan & Defile Kontingen PORSENI 2026',
+    deskripsi: 'Kemegahan seremonial pembukaan resmi PORSENI Nasional yang dihadiri seluruh kontingen atlet dan ofisial.',
+    kategori: 'PEMBUKAAN',
+    tanggal: '2026-09-25',
+    videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?w=800&auto=format&fit=crop&q=80',
+    durasi: '12:40',
+    periodeId: 'PRD-2026',
+  },
+  {
+    id: 'VID-002',
+    judul: 'Highlight Babak Final Futsal Putra Perebutan Medali Emas',
+    deskripsi: 'Aksi reli dan gol penentu kemenangan dalam partai final futsal beregu putra antar kontingen.',
+    kategori: 'OLAHRAGA',
+    tanggal: '2026-09-27',
+    videoUrl: 'https://www.youtube.com/watch?v=EngW7tLk6R8',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=800&auto=format&fit=crop&q=80',
+    durasi: '08:15',
+    periodeId: 'PRD-2026',
+  },
+  {
+    id: 'VID-003',
+    judul: 'Dokumentasi Penampilan Terbaik Musabaqah Tilawatil Qur\'an',
+    deskripsi: 'Lantunan indah ayat suci Al-Qur\'an cabang tilawah putri dengan penghayatan nada yang menggetarkan hati.',
+    kategori: 'SENI',
+    tanggal: '2026-09-26',
+    videoUrl: 'https://www.youtube.com/watch?v=3JZ_D3ELwOQ',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1585036156171-384164a8c675?w=800&auto=format&fit=crop&q=80',
+    durasi: '10:22',
+    periodeId: 'PRD-2026',
+  },
+  {
+    id: 'VID-004',
+    judul: 'Aksi Smash Reli Final Bulutangkis Tunggal Putra',
+    deskripsi: 'Rangkuman reli sengit rubber set pertandingan cabang bulutangkis putra di hall olahraga utama.',
+    kategori: 'OLAHRAGA',
+    tanggal: '2026-09-28',
+    videoUrl: 'https://www.youtube.com/watch?v=kJQP7kiw5Fk',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1626224583764-f87db24ac4ea?w=800&auto=format&fit=crop&q=80',
+    durasi: '06:50',
+    periodeId: 'PRD-2026',
+  },
+  {
+    id: 'VID-005',
+    judul: 'Proses Pembuatan Kaligrafi Kontemporer Juara 1',
+    deskripsi: 'Kreativitas seniman muda dalam menorehkan cat akrilik dan kanvas kaligrafi bernilai seni tinggi.',
+    kategori: 'SENI',
+    tanggal: '2026-09-29',
+    videoUrl: 'https://www.youtube.com/watch?v=fJ9rUzIMcZQ',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=800&auto=format&fit=crop&q=80',
+    durasi: '05:30',
+    periodeId: 'PRD-2026',
+  },
+  {
+    id: 'VID-006',
+    judul: 'Momen Penyerahan Piala Bergilir Juara Umum PORSENI 2026',
+    deskripsi: 'Kebanggaan dan haru kontingen pemenang juara umum saat mengangkat trofi bergilir PORSENI.',
+    kategori: 'JUARA',
+    tanggal: '2026-09-30',
+    videoUrl: 'https://www.youtube.com/watch?v=9bZkp7q19f0',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1569517282132-25d22f4573e6?w=800&auto=format&fit=crop&q=80',
+    durasi: '15:10',
     periodeId: 'PRD-2026',
   },
 ];
@@ -746,6 +817,9 @@ export class StorageService {
     if (!localStorage.getItem(STORAGE_KEYS.FOTO_KEGIATAN)) {
       localStorage.setItem(STORAGE_KEYS.FOTO_KEGIATAN, JSON.stringify(defaultFotoKegiatan));
     }
+    if (!localStorage.getItem(STORAGE_KEYS.VIDEO_KEGIATAN)) {
+      localStorage.setItem(STORAGE_KEYS.VIDEO_KEGIATAN, JSON.stringify(defaultVideoKegiatan));
+    }
     if (!localStorage.getItem(STORAGE_KEYS.AUDIT_LOGS)) {
       localStorage.setItem(STORAGE_KEYS.AUDIT_LOGS, JSON.stringify(defaultAuditLogs));
     }
@@ -823,8 +897,25 @@ export class StorageService {
     }
   }
 
-  private static setItems<T>(key: string, items: T[]): void {
+  public static setItems<T>(key: string, items: T[]): void {
     localStorage.setItem(key, JSON.stringify(items));
+  }
+
+  // --- CLOUD SYNC BRIDGE ---
+  private static cloudSyncHandler: ((action: 'set' | 'delete', collection: string, id: string, data?: any) => void) | null = null;
+
+  public static setCloudSyncHandler(handler: (action: 'set' | 'delete', collection: string, id: string, data?: any) => void): void {
+    this.cloudSyncHandler = handler;
+  }
+
+  public static notifyCloudSync(action: 'set' | 'delete', collection: string, id: string, data?: any): void {
+    if (this.cloudSyncHandler) {
+      try {
+        this.cloudSyncHandler(action, collection, id, data);
+      } catch (e) {
+        console.warn('[CloudSyncBridge] Failed to dispatch cloud sync:', e);
+      }
+    }
   }
 
   // --- AUDIT LOGS ---
@@ -860,6 +951,7 @@ export class StorageService {
       users.push(user);
     }
     this.setItems(STORAGE_KEYS.USERS, users);
+    this.notifyCloudSync('set', 'users', user.id, user);
   }
 
   // --- LEMBAGA ---
@@ -888,17 +980,21 @@ export class StorageService {
   public static saveLembaga(lembaga: Lembaga): void {
     const list = this.getLembaga();
     const index = list.findIndex(l => l.id === lembaga.id);
+    let targetLembaga = lembaga;
     if (index >= 0) {
-      list[index] = { ...lembaga, updatedAt: new Date().toISOString() };
+      targetLembaga = { ...lembaga, updatedAt: new Date().toISOString() };
+      list[index] = targetLembaga;
     } else {
-      list.push(lembaga);
+      list.push(targetLembaga);
     }
     this.setItems(STORAGE_KEYS.LEMBAGA, list);
+    this.notifyCloudSync('set', 'lembaga', targetLembaga.id, targetLembaga);
   }
 
   public static deleteLembaga(id: string): void {
     const list = this.getLembaga().filter(l => l.id !== id);
     this.setItems(STORAGE_KEYS.LEMBAGA, list);
+    this.notifyCloudSync('delete', 'lembaga', id);
     // Also remove associated user
     const users = this.getUsers().filter(u => u.lembagaId !== id);
     this.setItems(STORAGE_KEYS.USERS, users);
@@ -925,11 +1021,13 @@ export class StorageService {
       list.push(cabang);
     }
     this.setItems(STORAGE_KEYS.CABANG, list);
+    this.notifyCloudSync('set', 'cabang', cabang.id, cabang);
   }
 
   public static deleteCabang(id: string): void {
     const list = this.getCabang().filter(c => c.id !== id);
     this.setItems(STORAGE_KEYS.CABANG, list);
+    this.notifyCloudSync('delete', 'cabang', id);
   }
 
   // --- PESERTA ---
@@ -938,7 +1036,15 @@ export class StorageService {
   }
 
   public static getPesertaById(id: string): Peserta | undefined {
-    return this.getPeserta().find(p => p.id === id || p.nomorPeserta === id);
+    const clean = id.trim().toLowerCase();
+    return this.getPeserta().find(
+      p =>
+        p.id.toLowerCase() === clean ||
+        p.nomorPeserta.toLowerCase() === clean ||
+        p.nisn.toLowerCase() === clean ||
+        p.nik.toLowerCase() === clean ||
+        p.nis.toLowerCase() === clean
+    );
   }
 
   public static getPesertaByLembaga(lembagaId: string): Peserta[] {
@@ -976,17 +1082,21 @@ export class StorageService {
   public static savePeserta(peserta: Peserta): void {
     const list = this.getPeserta();
     const index = list.findIndex(p => p.id === peserta.id);
+    let targetPeserta = peserta;
     if (index >= 0) {
-      list[index] = { ...peserta, updatedAt: new Date().toISOString() };
+      targetPeserta = { ...peserta, updatedAt: new Date().toISOString() };
+      list[index] = targetPeserta;
     } else {
-      list.push(peserta);
+      list.push(targetPeserta);
     }
     this.setItems(STORAGE_KEYS.PESERTA, list);
+    this.notifyCloudSync('set', 'peserta', targetPeserta.id, targetPeserta);
   }
 
   public static deletePeserta(id: string): void {
     const list = this.getPeserta().filter(p => p.id !== id);
     this.setItems(STORAGE_KEYS.PESERTA, list);
+    this.notifyCloudSync('delete', 'peserta', id);
   }
 
   // --- PENGUMUMAN ---
@@ -1003,11 +1113,13 @@ export class StorageService {
       list.unshift(p);
     }
     this.setItems(STORAGE_KEYS.PENGUMUMAN, list);
+    this.notifyCloudSync('set', 'pengumuman', p.id, p);
   }
 
   public static deletePengumuman(id: string): void {
     const list = this.getPengumuman().filter(p => p.id !== id);
     this.setItems(STORAGE_KEYS.PENGUMUMAN, list);
+    this.notifyCloudSync('delete', 'pengumuman', id);
   }
 
   // --- JADWAL ---
@@ -1024,11 +1136,13 @@ export class StorageService {
       list.push(j);
     }
     this.setItems(STORAGE_KEYS.JADWAL, list);
+    this.notifyCloudSync('set', 'jadwal', j.id, j);
   }
 
   public static deleteJadwal(id: string): void {
     const list = this.getJadwal().filter(j => j.id !== id);
     this.setItems(STORAGE_KEYS.JADWAL, list);
+    this.notifyCloudSync('delete', 'jadwal', id);
   }
 
   // --- FOTO KEGIATAN ---
@@ -1045,11 +1159,60 @@ export class StorageService {
       list.unshift(f);
     }
     this.setItems(STORAGE_KEYS.FOTO_KEGIATAN, list);
+    this.notifyCloudSync('set', 'foto_kegiatan', f.id, f);
+    try {
+      window.dispatchEvent(new CustomEvent('porseni_foto_updated'));
+    } catch {
+      // ignore
+    }
   }
 
   public static deleteFotoKegiatan(id: string): void {
     const list = this.getFotoKegiatan().filter(f => f.id !== id);
     this.setItems(STORAGE_KEYS.FOTO_KEGIATAN, list);
+    this.notifyCloudSync('delete', 'foto_kegiatan', id);
+    try {
+      window.dispatchEvent(new CustomEvent('porseni_foto_updated'));
+    } catch {
+      // ignore
+    }
+  }
+
+  // --- VIDEO KEGIATAN ---
+  public static getVideoKegiatan(): VideoKegiatan[] {
+    return this.getItems<VideoKegiatan>(STORAGE_KEYS.VIDEO_KEGIATAN, defaultVideoKegiatan);
+  }
+
+  public static getVideoKegiatanById(id: string): VideoKegiatan | undefined {
+    return this.getVideoKegiatan().find(v => v.id === id);
+  }
+
+  public static saveVideoKegiatan(v: VideoKegiatan): void {
+    const list = this.getVideoKegiatan();
+    const index = list.findIndex(item => item.id === v.id);
+    if (index >= 0) {
+      list[index] = v;
+    } else {
+      list.unshift(v);
+    }
+    this.setItems(STORAGE_KEYS.VIDEO_KEGIATAN, list);
+    this.notifyCloudSync('set', 'video_kegiatan', v.id, v);
+    try {
+      window.dispatchEvent(new CustomEvent('porseni_video_updated'));
+    } catch {
+      // ignore
+    }
+  }
+
+  public static deleteVideoKegiatan(id: string): void {
+    const list = this.getVideoKegiatan().filter(v => v.id !== id);
+    this.setItems(STORAGE_KEYS.VIDEO_KEGIATAN, list);
+    this.notifyCloudSync('delete', 'video_kegiatan', id);
+    try {
+      window.dispatchEvent(new CustomEvent('porseni_video_updated'));
+    } catch {
+      // ignore
+    }
   }
 
   // --- PENGATURAN & PERIODE ---
@@ -1064,6 +1227,7 @@ export class StorageService {
 
   public static savePengaturan(settings: PengaturanSistem): void {
     localStorage.setItem(STORAGE_KEYS.PENGATURAN, JSON.stringify(settings));
+    this.notifyCloudSync('set', 'pengaturan', 'global', settings);
     try {
       window.dispatchEvent(
         new CustomEvent('porseni_pengaturan_updated', { detail: settings })
@@ -1098,6 +1262,8 @@ export class StorageService {
       cabang: this.getCabang(),
       jadwal: this.getJadwal(),
       pengumuman: this.getPengumuman(),
+      foto: this.getFotoKegiatan(),
+      video: this.getVideoKegiatan(),
       lembaga: this.getLembaga(),
       peserta: this.getPeserta(),
       users: this.getUsers(),
@@ -1118,6 +1284,8 @@ export class StorageService {
       if (data.cabang) localStorage.setItem(STORAGE_KEYS.CABANG, JSON.stringify(data.cabang));
       if (data.jadwal) localStorage.setItem(STORAGE_KEYS.JADWAL, JSON.stringify(data.jadwal));
       if (data.pengumuman) localStorage.setItem(STORAGE_KEYS.PENGUMUMAN, JSON.stringify(data.pengumuman));
+      if (data.foto) localStorage.setItem(STORAGE_KEYS.FOTO_KEGIATAN, JSON.stringify(data.foto));
+      if (data.video) localStorage.setItem(STORAGE_KEYS.VIDEO_KEGIATAN, JSON.stringify(data.video));
       if (data.lembaga) localStorage.setItem(STORAGE_KEYS.LEMBAGA, JSON.stringify(data.lembaga));
       if (data.peserta) localStorage.setItem(STORAGE_KEYS.PESERTA, JSON.stringify(data.peserta));
       if (data.users) localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(data.users));
@@ -1132,6 +1300,13 @@ export class StorageService {
         status: 'SUKSES',
       });
 
+      try {
+        window.dispatchEvent(new CustomEvent('porseni_pengaturan_updated', { detail: data.pengaturan }));
+        window.dispatchEvent(new CustomEvent('porseni_cloud_synced'));
+      } catch {
+        // ignore
+      }
+
       return { success: true, message: 'Data cadangan sistem berhasil dipulihkan secara penuh!' };
     } catch (e: any) {
       return { success: false, message: 'Gagal memproses file: ' + (e.message || 'JSON tidak valid') };
@@ -1143,5 +1318,11 @@ export class StorageService {
     localStorage.clear();
     this.isInitialized = false;
     this.init();
+    try {
+      window.dispatchEvent(new CustomEvent('porseni_pengaturan_updated', { detail: defaultPengaturan }));
+      window.dispatchEvent(new CustomEvent('porseni_cloud_synced'));
+    } catch {
+      // ignore
+    }
   }
 }

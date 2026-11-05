@@ -1,6 +1,7 @@
 import * as XLSX from 'xlsx';
 import { CabangLomba, Peserta, PesertaStatus } from '../types';
 import { StorageService } from './storage';
+import { getOpsiKelasByJenjang } from '../utils/jenjangHelper';
 
 export interface ExcelImportRow {
   rowNumber: number;
@@ -316,7 +317,7 @@ export class ExcelService {
           tempatLahir: row.tempatLahir,
           tanggalLahir: row.tanggalLahir,
           jenisKelamin: row.jenisKelamin,
-          kelas: row.kelas || 'X',
+          kelas: row.kelas || getOpsiKelasByJenjang(row.tingkat)[0] || 'Kelas X',
           tingkat: (row.tingkat as any) || 'MA/SMA/SMK',
           cabangId: row.matchedCabangId,
           kategoriLomba: row.kategori,

@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { PengaturanSistem, Periode } from '../../types';
 import { StorageService } from '../../services/storage';
 import { PorseniEmblem } from '../common/OfficialLogos';
+import { uploadAllToFirestore, downloadAllFromFirestore } from '../../services/firebase';
+import { SpreadsheetSyncService } from '../../services/spreadsheetSync';
 import {
   Settings,
   Calendar,
@@ -16,6 +18,15 @@ import {
   Upload,
   Image as ImageIcon,
   Trash2,
+  Cloud,
+  Database,
+  RefreshCw,
+  FileSpreadsheet,
+  Download,
+  ExternalLink,
+  ArrowDownToLine,
+  ArrowUpFromLine,
+  Check,
 } from 'lucide-react';
 
 interface AdminPengaturanProps {
@@ -108,6 +119,60 @@ export const AdminPengaturan: React.FC<AdminPengaturanProps> = ({
     setSettings(prev => ({ ...prev, aktifPeriodeId: id, tahun: newPeriode.tahun }));
     setShowAddPeriode(false);
     onShowToast('success', `Periode baru ${newPeriode.nama} berhasil diaktifkan!`);
+  };
+
+  const [syncingCloud, setSyncingCloud] = useState(false);
+  const [syncingSheet, setSyncingSheet] = useState(false);
+
+  const handleSyncPushCloud = async () => {
+    setSyncingCloud(true);
+    const res = await uploadAllToFirestore();
+    setSyncingCloud(false);
+    if (res.success) {
+      onShowToast('success', `${res.message} (${res.counts.peserta} peserta, ${res.counts.lembaga} lembaga)`);
+      setSettings(StorageService.getPengaturan());
+      onRefresh();
+    } else {
+      onShowToast('error', res.message);
+    }
+  };
+
+  const handleSyncPullCloud = async () => {
+    setSyncingCloud(true);
+    const res = await downloadAllFromFirestore();
+    setSyncingCloud(false);
+    if (res.success) {
+      onShowToast('success', `${res.message} (${res.counts.peserta} peserta, ${res.counts.lembaga} lembaga)`);
+      setSettings(StorageService.getPengaturan());
+      onRefresh();
+    } else {
+      onShowToast('error', res.message);
+    }
+  };
+
+  const handlePullSpreadsheet = async () => {
+    if (!settings.spreadsheetId) {
+      onShowToast('warning', 'Silakan masukkan ID Google Spreadsheet terlebih dahulu.');
+      return;
+    }
+    setSyncingSheet(true);
+    const res = await SpreadsheetSyncService.pullFromSpreadsheet(settings.spreadsheetId);
+    setSyncingSheet(false);
+    if (res.success) {
+      onShowToast('success', res.message);
+      setSettings(StorageService.getPengaturan());
+      onRefresh();
+    } else {
+      onShowToast('error', res.message);
+    }
+  };
+
+  const handleDownloadTemplate = () => {
+    SpreadsheetSyncService.downloadTemplateSpreadsheet();
+    onShowToast(
+      'success',
+      'Format template Google Spreadsheet (.xlsx) berhasil diunduh. Upload ke Google Drive untuk mulai sinkronisasi.'
+    );
   };
 
   return (
@@ -408,6 +473,125 @@ export const AdminPengaturan: React.FC<AdminPengaturanProps> = ({
                   className="w-5 h-5 text-rose-600 rounded border-slate-300 focus:ring-rose-500"
                 />
               </div>
+            </div>
+          </div>
+
+          {/* Section C: Integrasi Google Spreadsheet & Cloud Multi-Device */}
+          <div className="space-y-4 pt-4 border-t border-slate-100">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <FileSpreadsheet className="w-4 h-4 text-emerald-700" />
+                <h4 className="font-bold text-slate-800 uppercase tracking-wide">
+                  C. Integrasi Google Spreadsheet & Cloud Multi-Device (Opsi C)
+                </h4>
+              </div>
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1 self-start sm:self-auto">
+                <Cloud className="w-3 h-3 text-emerald-600" />
+                <span>Cloud Sync & Spreadsheet Aktif</span>
+              </span>
+            </div>
+
+            <p className="text-[11px] text-slate-500 leading-relaxed">
+              Dengan integrasi ini, Anda cukup memasukkan <strong>ID Google Spreadsheet</strong> di perangkat apa pun. Aplikasi otomatis menarik data dari spreadsheet tersebut, serta menyinkronkan seluruh perubahan ke database cloud sehingga semua device (laptop/HP panitia) selalu menampilkan data yang persis sama.
+            </p>
+
+            {/* Box 1: Google Spreadsheet ID Input & Actions */}
+            <div className="p-4 bg-emerald-50/60 rounded-xl border border-emerald-200 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <label className="font-bold text-emerald-950 text-xs flex items-center gap-1.5">
+                  <FileSpreadsheet className="w-4 h-4 text-emerald-700" />
+                  <span>ID Google Spreadsheet</span>
+                </label>
+                <button
+                  type="button"
+                  onClick={handleDownloadTemplate}
+                  className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-800 hover:text-emerald-900 bg-white px-2.5 py-1 rounded-md border border-emerald-300 shadow-2xs hover:bg-emerald-50 transition-colors cursor-pointer self-start sm:self-auto"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Unduh Format Master Sheet (.xlsx)</span>
+                </button>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-2">
+                <input
+                  type="text"
+                  value={settings.spreadsheetId || ''}
+                  onChange={e => setSettings({ ...settings, spreadsheetId: e.target.value })}
+                  placeholder="Contoh: 1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms atau tempel link spreadsheet"
+                  className="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:ring-1 focus:ring-emerald-600 font-mono text-xs bg-white"
+                />
+                <button
+                  type="button"
+                  onClick={handlePullSpreadsheet}
+                  disabled={syncingSheet || !settings.spreadsheetId}
+                  className="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white font-bold text-xs rounded-lg shadow-xs flex items-center justify-center gap-1.5 transition-colors shrink-0 cursor-pointer"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${syncingSheet ? 'animate-spin' : ''}`} />
+                  <span>{syncingSheet ? 'Menyinkronkan...' : 'Tarik Data dari Spreadsheet'}</span>
+                </button>
+              </div>
+
+              {settings.lastSyncSpreadsheet && (
+                <p className="text-[10px] text-emerald-800 font-medium">
+                  Terakhir disinkronkan dengan Google Spreadsheet: <span className="font-mono">{new Date(settings.lastSyncSpreadsheet).toLocaleString('id-ID')}</span>
+                </p>
+              )}
+
+              {/* Panduan Ringkas */}
+              <div className="p-3 bg-white/80 rounded-lg border border-emerald-200 text-[11px] text-slate-600 space-y-1">
+                <p className="font-bold text-emerald-900">Petunjuk Penggunaan Spreadsheet:</p>
+                <ol className="list-decimal list-inside space-y-0.5 text-slate-600">
+                  <li>Buat atau buka Google Spreadsheet Anda yang berisi tab <code className="bg-slate-100 px-1 rounded font-bold text-emerald-800">Peserta</code> dan <code className="bg-slate-100 px-1 rounded font-bold text-emerald-800">Lembaga</code> (atau gunakan tombol <em>Unduh Format Master Sheet</em> di atas).</li>
+                  <li>Atur akses berbagi di Google Sheets: <strong>Bagikan / Share &gt; Siapa saja yang memiliki link dapat melihat</strong> (Viewer).</li>
+                  <li>Salin ID dari URL Google Sheets (teks antara <code className="bg-slate-100 px-1 rounded">/d/</code> dan <code className="bg-slate-100 px-1 rounded">/edit</code>) lalu tempel ke kolom di atas.</li>
+                  <li>Klik <strong>Tarik Data dari Spreadsheet</strong>. Data akan otomatis masuk ke sistem dan tersinkronkan ke seluruh perangkat!</li>
+                </ol>
+              </div>
+            </div>
+
+            {/* Box 2: Cloud Database Sync Status (Multi-Device) */}
+            <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <Database className="w-4 h-4 text-emerald-700" />
+                  <span className="font-bold text-slate-900 text-xs">Pangkalan Data Cloud Multi-Device (Firebase Firestore)</span>
+                </div>
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 self-start sm:self-auto">
+                  Online & Terhubung
+                </span>
+              </div>
+
+              <p className="text-[11px] text-slate-500">
+                Pangkalan data cloud memastikan ketika satu panitia memverifikasi peserta atau menambahkan lembaga, seluruh laptop dan HP panitia lainnya langsung sinkron secara otomatis.
+              </p>
+
+              <div className="flex flex-wrap items-center gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={handleSyncPushCloud}
+                  disabled={syncingCloud}
+                  className="px-3.5 py-2 bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white font-bold text-xs rounded-lg shadow-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  <ArrowUpFromLine className={`w-3.5 h-3.5 ${syncingCloud ? 'animate-spin' : ''}`} />
+                  <span>{syncingCloud ? 'Mengunggah...' : 'Kirim Data Lokal ke Cloud (Push)'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleSyncPullCloud}
+                  disabled={syncingCloud}
+                  className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 text-slate-800 font-bold text-xs rounded-lg border border-slate-300 transition-colors flex items-center gap-1.5 cursor-pointer"
+                >
+                  <ArrowDownToLine className={`w-3.5 h-3.5 ${syncingCloud ? 'animate-spin' : ''}`} />
+                  <span>{syncingCloud ? 'Mengunduh...' : 'Tarik Data Cloud ke Device Ini (Pull)'}</span>
+                </button>
+              </div>
+
+              {settings.lastSyncCloud && (
+                <p className="text-[10px] text-slate-500 font-medium pt-1">
+                  Sinkronisasi Cloud terakhir: <span className="font-mono">{new Date(settings.lastSyncCloud).toLocaleString('id-ID')}</span>
+                </p>
+              )}
             </div>
           </div>
 

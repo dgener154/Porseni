@@ -181,6 +181,18 @@ export interface FotoKegiatan {
   periodeId: string;
 }
 
+export interface VideoKegiatan {
+  id: string;
+  judul: string;
+  deskripsi?: string;
+  kategori: 'PEMBUKAAN' | 'OLAHRAGA' | 'SENI' | 'JUARA' | 'DOKUMENTASI' | 'HIGHLIGHT';
+  tanggal: string;
+  videoUrl: string; // YouTube URL / Embed or direct video link / Google Drive
+  thumbnailUrl?: string;
+  durasi?: string;
+  periodeId: string;
+}
+
 export interface PengaturanSistem {
   namaWebsite: string; // e.g. "PORSENI DIGITAL" or configurable name
   namaPorseni: string;
@@ -204,6 +216,12 @@ export interface PengaturanSistem {
   aktifPeriodeId: string;
   ketentuanUmum: string;
   tujuanKegiatan: string;
+  // Integrasi Google Spreadsheet & Cloud Multi-Device
+  spreadsheetId?: string;
+  spreadsheetAppsScriptUrl?: string;
+  autoSyncCloud?: boolean;
+  lastSyncSpreadsheet?: string;
+  lastSyncCloud?: string;
 }
 
 export interface Periode {

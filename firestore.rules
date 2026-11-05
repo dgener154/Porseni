@@ -1,0 +1,60 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Health check test connection rule
+    match /test/{docId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // Default deny for unhandled paths
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // App core collections for multi-device sync
+    match /users/{userId} {
+      allow read, write: if true;
+    }
+
+    match /lembaga/{lembagaId} {
+      allow read, write: if true;
+    }
+
+    match /peserta/{pesertaId} {
+      allow read, write: if true;
+    }
+
+    match /cabang/{cabangId} {
+      allow read, write: if true;
+    }
+
+    match /pengaturan/{configId} {
+      allow read, write: if true;
+    }
+
+    match /pengumuman/{annId} {
+      allow read, write: if true;
+    }
+
+    match /jadwal/{jadwalId} {
+      allow read, write: if true;
+    }
+
+    match /foto_kegiatan/{fotoId} {
+      allow read, write: if true;
+    }
+
+    match /video_kegiatan/{videoId} {
+      allow read, write: if true;
+    }
+
+    match /audit_logs/{logId} {
+      allow read, write: if true;
+    }
+
+    match /periode/{periodeId} {
+      allow read, write: if true;
+    }
+  }
+}

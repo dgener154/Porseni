@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Peserta, Lembaga, CabangLomba, PengaturanSistem } from '../../types';
 import { StorageService } from '../../services/storage';
+import { AuthService } from '../../services/auth';
+import { CardPrintingService } from '../../services/cardPrinting';
 import { CodeGeneratorService } from '../../services/barcode';
 import { PorseniEmblem } from './OfficialLogos';
 import { Printer, Download, CheckCircle, ShieldCheck } from 'lucide-react';
@@ -27,6 +29,9 @@ export const KartuPesertaView: React.FC<KartuPesertaViewProps> = ({
   const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
   const barcodeSvgRef = useRef<SVGSVGElement | null>(null);
 
+  const session = AuthService.getSession();
+  const isAdmin = session?.user.role === 'ADMIN';
+
   useEffect(() => {
     // Generate QR code pointing to real verification link
     const validationUrl = CodeGeneratorService.getValidationUrl(peserta.nomorPeserta);
@@ -44,25 +49,58 @@ export const KartuPesertaView: React.FC<KartuPesertaViewProps> = ({
     }
   }, [peserta.nomorPeserta]);
 
-  const handlePrint = () => {
-    window.print();
+  const [isExporting, setIsExporting] = useState(false);
+
+  const handlePrint = async () => {
+    try {
+      setIsExporting(true);
+      await CardPrintingService.printSingleCard(peserta.id);
+    } catch (e: any) {
+      console.warn(e.message);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleDownloadPdf = async () => {
+    try {
+      setIsExporting(true);
+      await CardPrintingService.exportCardPdf(peserta.id);
+    } catch (e: any) {
+      console.warn(e.message);
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   return (
     <div className="flex flex-col items-center">
-      {showPrintActions && (
+      {/* Print Actions ONLY visible to Admin/Panitia Pusat */}
+      {showPrintActions && isAdmin && (
         <div className="no-print flex items-center justify-between w-full max-w-md mb-4 bg-white p-3 rounded-lg border border-slate-200 shadow-xs">
           <div className="flex items-center gap-2 text-xs font-semibold text-slate-700">
             <ShieldCheck className="w-4 h-4 text-emerald-600" />
             <span>Kartu Identitas Peserta Resmi</span>
           </div>
-          <button
-            onClick={handlePrint}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-emerald-700 hover:bg-emerald-800 rounded-md shadow-xs transition-colors"
-          >
-            <Printer className="w-3.5 h-3.5" />
-            <span>Cetak / Simpan PDF</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleDownloadPdf}
+              disabled={isExporting}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 rounded-md shadow-2xs transition-colors cursor-pointer disabled:opacity-50"
+              title="Unduh file PDF kartu peserta resmi"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>PDF</span>
+            </button>
+            <button
+              onClick={handlePrint}
+              disabled={isExporting}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-emerald-700 hover:bg-emerald-800 rounded-md shadow-xs transition-colors cursor-pointer disabled:opacity-50"
+            >
+              <Printer className="w-3.5 h-3.5" />
+              <span>{isExporting ? 'Memproses...' : 'Cetak'}</span>
+            </button>
+          </div>
         </div>
       )}
 

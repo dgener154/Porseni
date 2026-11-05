@@ -10,10 +10,15 @@ import {
   AlertTriangle,
   Clock,
   User,
+  RefreshCw,
 } from 'lucide-react';
 
 export const AdminAuditLog: React.FC = () => {
-  const [logs] = useState<AuditLog[]>(StorageService.getAuditLogs());
+  const [logs, setLogs] = useState<AuditLog[]>(StorageService.getAuditLogs());
+
+  const handleRefresh = () => {
+    setLogs(StorageService.getAuditLogs());
+  };
   const [search, setSearch] = useState('');
   const [filterRole, setFilterRole] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
@@ -53,9 +58,18 @@ export const AdminAuditLog: React.FC = () => {
               Merekam seluruh riwayat autentikasi, transaksi verifikasi, perubahan data, dan ekspor dokumen.
             </p>
           </div>
-          <span className="text-xs font-mono font-bold text-slate-700 bg-slate-100 px-3 py-1 rounded-full self-start sm:self-auto">
-            {filtered.length} Catatan Log
-          </span>
+          <div className="flex items-center gap-2 self-start sm:self-auto">
+            <span className="text-xs font-mono font-bold text-slate-700 bg-slate-100 px-3 py-1 rounded-full">
+              {filtered.length} Catatan Log
+            </span>
+            <button
+              onClick={handleRefresh}
+              className="p-1.5 text-slate-600 hover:text-emerald-700 hover:bg-slate-100 rounded-lg border border-slate-200 transition-colors"
+              title="Perbarui data log terkini"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-slate-100 text-xs">

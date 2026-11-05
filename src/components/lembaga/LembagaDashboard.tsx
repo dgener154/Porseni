@@ -14,6 +14,7 @@ import {
   Upload,
   Calendar,
   ShieldAlert,
+  Eye,
 } from 'lucide-react';
 
 interface LembagaDashboardProps {
@@ -77,10 +78,10 @@ export const LembagaDashboard: React.FC<LembagaDashboardProps> = ({
             </button>
             <button
               onClick={() => onNavigate('kartu')}
-              className="px-4 py-2 text-xs font-bold text-emerald-900 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 rounded-lg transition-colors flex items-center gap-1.5"
+              className="px-4 py-2 text-xs font-bold text-emerald-900 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
             >
-              <Printer className="w-4 h-4 text-emerald-700" />
-              <span>Cetak Kartu ({verifiedPeserta})</span>
+              <Eye className="w-4 h-4 text-emerald-700" />
+              <span>Pratinjau Kartu ({verifiedPeserta})</span>
             </button>
           </div>
         </div>
@@ -113,7 +114,7 @@ export const LembagaDashboard: React.FC<LembagaDashboardProps> = ({
             { step: '4. Upload Berkas', done: totalPeserta > 0 && incompleteDocsPeserta === 0 },
             { step: '5. Verifikasi Peserta', done: verifiedPeserta > 0 },
             { step: '6. Peserta Final', done: verifiedPeserta > 0 },
-            { step: '7. Cetak Kartu', done: verifiedPeserta > 0 },
+            { step: '7. Kartu Peserta', done: verifiedPeserta > 0 },
             { step: '8. Lomba PORSENI', done: false },
           ].map((item, index) => (
             <div
@@ -289,11 +290,11 @@ export const LembagaDashboard: React.FC<LembagaDashboardProps> = ({
 
               <button
                 onClick={() => onNavigate('kartu')}
-                className="p-3 bg-slate-50 hover:bg-emerald-50/70 border border-slate-200 hover:border-emerald-300 rounded-lg text-left transition-colors"
+                className="p-3 bg-slate-50 hover:bg-emerald-50/70 border border-slate-200 hover:border-emerald-300 rounded-lg text-left transition-colors cursor-pointer"
               >
-                <Printer className="w-5 h-5 text-emerald-700 mb-1" />
-                <span className="font-bold text-slate-900 block">Cetak Kartu Tanda</span>
-                <span className="text-[10px] text-slate-500">Khusus data terverifikasi</span>
+                <Eye className="w-5 h-5 text-emerald-700 mb-1" />
+                <span className="font-bold text-slate-900 block">Pratinjau Kartu</span>
+                <span className="text-[10px] text-slate-500">Lihat kartu terverifikasi</span>
               </button>
 
               <button

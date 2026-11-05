@@ -1,7 +1,15 @@
-import React, { useState } from 'react';
-import { CabangLomba, FotoKegiatan, JadwalKegiatan, PengaturanSistem, Pengumuman } from '../../types';
+import React, { useState, useEffect } from 'react';
+import {
+  CabangLomba,
+  FotoKegiatan,
+  VideoKegiatan,
+  JadwalKegiatan,
+  PengaturanSistem,
+  Pengumuman,
+} from '../../types';
 import { StorageService } from '../../services/storage';
 import { PorseniEmblem } from '../common/OfficialLogos';
+import { parseVideoUrl, getVideoThumbnail } from '../../utils/videoHelper';
 import {
   Trophy,
   Calendar,
@@ -19,15 +27,24 @@ import {
   FileCheck2,
   LogIn,
   Image as ImageIcon,
+  Video as VideoIcon,
   ExternalLink,
   Eye,
+  Play,
+  Clock,
+  ChevronDown,
+  Menu,
   X,
+  ArrowRight,
+  Smartphone,
 } from 'lucide-react';
 
 interface LandingPageProps {
   onOpenLogin: (role: 'ADMIN' | 'LEMBAGA') => void;
-  onOpenRegistrasi: () => void;
+  onOpenRegistrasi?: () => void;
   onOpenValidasi: () => void;
+  onNavigateGaleri?: (tab: 'foto' | 'video') => void;
+  onOpenMultiDevice?: () => void;
 }
 
 // Category color palettes for vibrant cards
@@ -45,16 +62,50 @@ const BRANCH_PALETTES = [
 export const LandingPage: React.FC<LandingPageProps> = ({
   onOpenLogin,
   onOpenValidasi,
+  onNavigateGaleri,
+  onOpenMultiDevice,
 }) => {
   const [settings] = useState<PengaturanSistem>(StorageService.getPengaturan());
   const [cabangList] = useState<CabangLomba[]>(StorageService.getCabang());
   const [jadwalList] = useState<JadwalKegiatan[]>(StorageService.getJadwal());
   const [pengumumanList] = useState<Pengumuman[]>(StorageService.getPengumuman());
-  const [fotoList] = useState<FotoKegiatan[]>(StorageService.getFotoKegiatan());
+  const [fotoList, setFotoList] = useState<FotoKegiatan[]>([]);
+  const [videoList, setVideoList] = useState<VideoKegiatan[]>([]);
 
   const [activeTabKategori, setActiveTabKategori] = useState<'SEMUA' | 'OLAHRAGA' | 'SENI'>('SEMUA');
   const [searchCabang, setSearchCabang] = useState('');
   const [previewPhoto, setPreviewPhoto] = useState<FotoKegiatan | null>(null);
+  const [activeVideo, setActiveVideo] = useState<VideoKegiatan | null>(null);
+
+  // Dropdown & mobile state
+  const [dropdownGaleriOpen, setDropdownGaleriOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const loadMedia = () => {
+    const photos = StorageService.getFotoKegiatan();
+    const sortedPhotos = [...photos].sort(
+      (a, b) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime()
+    );
+    setFotoList(sortedPhotos);
+
+    const videos = StorageService.getVideoKegiatan();
+    const sortedVideos = [...videos].sort(
+      (a, b) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime()
+    );
+    setVideoList(sortedVideos);
+  };
+
+  useEffect(() => {
+    loadMedia();
+    const handleFotoUpdate = () => loadMedia();
+    const handleVideoUpdate = () => loadMedia();
+    window.addEventListener('porseni_foto_updated', handleFotoUpdate);
+    window.addEventListener('porseni_video_updated', handleVideoUpdate);
+    return () => {
+      window.removeEventListener('porseni_foto_updated', handleFotoUpdate);
+      window.removeEventListener('porseni_video_updated', handleVideoUpdate);
+    };
+  }, []);
 
   const filteredCabang = cabangList.filter(c => {
     const matchCat = activeTabKategori === 'SEMUA' || c.kategori === activeTabKategori;
@@ -63,6 +114,21 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       c.kode.toLowerCase().includes(searchCabang.toLowerCase());
     return matchCat && matchSearch;
   });
+
+  const handleGaleriClick = (tab: 'foto' | 'video') => {
+    setDropdownGaleriOpen(false);
+    setMobileMenuOpen(false);
+    if (onNavigateGaleri) {
+      onNavigateGaleri(tab);
+    } else {
+      const el = document.getElementById(tab === 'foto' ? 'galeri' : 'video');
+      el?.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  // 6 newest items for homepage summary
+  const summaryPhotos = fotoList.slice(0, 6);
+  const summaryVideos = videoList.slice(0, 6);
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col">
@@ -75,9 +141,19 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               Portal Resmi Penyelenggaraan Kegiatan {settings.namaPorseni} {settings.tahun}
             </span>
             <div className="flex items-center gap-4 shrink-0">
+              {onOpenMultiDevice && (
+                <button
+                  onClick={onOpenMultiDevice}
+                  className="hover:text-amber-300 transition-colors flex items-center gap-1 font-semibold cursor-pointer"
+                  title="Buka panduan & QR Code untuk akses di HP"
+                >
+                  <Smartphone className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Buka di HP (Multi-Device)</span>
+                </button>
+              )}
               <button
                 onClick={onOpenValidasi}
-                className="hover:text-amber-300 transition-colors flex items-center gap-1 font-semibold"
+                className="hover:text-amber-300 transition-colors flex items-center gap-1 font-semibold cursor-pointer"
               >
                 <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
                 <span>Cek Keaslian Kartu Peserta</span>
@@ -100,7 +176,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </div>
           </div>
 
-          {/* Clean Navbar: ONLY navigation links, NO duplicate login text */}
+          {/* Desktop Navigation */}
           <nav className="hidden lg:flex items-center gap-6 text-xs font-semibold text-slate-700">
             <a href="#beranda" className="hover:text-emerald-700 transition-colors">
               Beranda
@@ -111,9 +187,63 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             <a href="#cabang" className="hover:text-emerald-700 transition-colors">
               Cabang Lomba
             </a>
-            <a href="#galeri" className="hover:text-emerald-700 transition-colors">
-              Foto Kegiatan
-            </a>
+
+            {/* GALERI DROPDOWN MENU */}
+            <div
+              className="relative group py-2"
+              onMouseEnter={() => setDropdownGaleriOpen(true)}
+              onMouseLeave={() => setDropdownGaleriOpen(false)}
+            >
+              <button
+                type="button"
+                onClick={() => setDropdownGaleriOpen(!dropdownGaleriOpen)}
+                className="flex items-center gap-1 text-slate-700 group-hover:text-emerald-700 font-semibold transition-colors cursor-pointer py-1"
+                aria-expanded={dropdownGaleriOpen}
+              >
+                <span>Galeri</span>
+                <ChevronDown
+                  className={`w-3.5 h-3.5 transition-transform duration-200 text-slate-500 group-hover:text-emerald-700 ${
+                    dropdownGaleriOpen ? 'rotate-180' : ''
+                  }`}
+                />
+              </button>
+
+              {/* Modern Dropdown Submenu */}
+              <div
+                className={`absolute top-full left-0 pt-1.5 w-44 transition-all duration-200 z-50 ${
+                  dropdownGaleriOpen ? 'opacity-100 visible translate-y-0' : 'opacity-0 invisible -translate-y-1'
+                }`}
+              >
+                <div className="bg-white rounded-xl shadow-xl border border-slate-200 p-1.5 space-y-1">
+                  <button
+                    onClick={() => handleGaleriClick('foto')}
+                    className="w-full text-left px-3 py-2 text-xs font-semibold text-slate-700 hover:text-emerald-900 hover:bg-emerald-50 rounded-lg transition-colors flex items-center gap-2.5 cursor-pointer"
+                  >
+                    <div className="w-6 h-6 rounded-md bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0">
+                      <ImageIcon className="w-3.5 h-3.5" />
+                    </div>
+                    <div>
+                      <span className="block font-bold">Foto</span>
+                      <span className="text-[10px] text-slate-400 font-normal">Semua Dokumentasi</span>
+                    </div>
+                  </button>
+
+                  <button
+                    onClick={() => handleGaleriClick('video')}
+                    className="w-full text-left px-3 py-2 text-xs font-semibold text-slate-700 hover:text-emerald-900 hover:bg-emerald-50 rounded-lg transition-colors flex items-center gap-2.5 cursor-pointer"
+                  >
+                    <div className="w-6 h-6 rounded-md bg-amber-100 text-amber-800 flex items-center justify-center shrink-0">
+                      <VideoIcon className="w-3.5 h-3.5" />
+                    </div>
+                    <div>
+                      <span className="block font-bold">Video</span>
+                      <span className="text-[10px] text-slate-400 font-normal">Siaran & Cuplikan</span>
+                    </div>
+                  </button>
+                </div>
+              </div>
+            </div>
+
             <a href="#jadwal" className="hover:text-emerald-700 transition-colors">
               Jadwal
             </a>
@@ -125,29 +255,112 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </a>
           </nav>
 
-          {/* Single Official Login Button */}
+          {/* Right Header Action: Login Button & Mobile Menu Toggle */}
           <div className="flex items-center gap-2">
             <button
               onClick={() => onOpenLogin('ADMIN')}
-              className="px-4 py-2 text-xs font-bold text-white bg-emerald-700 hover:bg-emerald-800 rounded-lg shadow-xs transition-colors flex items-center gap-1.5"
+              className="px-4 py-2 text-xs font-bold text-white bg-emerald-700 hover:bg-emerald-800 rounded-lg shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
             >
               <LogIn className="w-3.5 h-3.5" />
               <span>Login</span>
             </button>
+
+            {/* Mobile Hamburger Toggle */}
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="lg:hidden p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
+              aria-label="Buka Menu"
+            >
+              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </button>
           </div>
         </div>
+
+        {/* Mobile Dropdown Drawer */}
+        {mobileMenuOpen && (
+          <div className="lg:hidden border-t border-slate-200 bg-white px-4 py-3 space-y-2 text-xs font-semibold text-slate-700 animate-in slide-in-from-top-2">
+            <a
+              href="#beranda"
+              onClick={() => setMobileMenuOpen(false)}
+              className="block px-3 py-2 rounded-lg hover:bg-slate-100"
+            >
+              Beranda
+            </a>
+            <a
+              href="#tentang"
+              onClick={() => setMobileMenuOpen(false)}
+              className="block px-3 py-2 rounded-lg hover:bg-slate-100"
+            >
+              Tentang
+            </a>
+            <a
+              href="#cabang"
+              onClick={() => setMobileMenuOpen(false)}
+              className="block px-3 py-2 rounded-lg hover:bg-slate-100"
+            >
+              Cabang Lomba
+            </a>
+
+            {/* Mobile Galeri Section */}
+            <div className="bg-slate-50 rounded-xl p-2.5 border border-slate-200 space-y-1">
+              <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider block px-1">
+                Galeri Kegiatan
+              </span>
+              <button
+                onClick={() => handleGaleriClick('foto')}
+                className="w-full text-left px-3 py-2 rounded-lg hover:bg-emerald-50 text-slate-800 font-bold flex items-center justify-between"
+              >
+                <div className="flex items-center gap-2">
+                  <ImageIcon className="w-4 h-4 text-emerald-700" />
+                  <span>Galeri Foto</span>
+                </div>
+                <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
+              </button>
+              <button
+                onClick={() => handleGaleriClick('video')}
+                className="w-full text-left px-3 py-2 rounded-lg hover:bg-emerald-50 text-slate-800 font-bold flex items-center justify-between"
+              >
+                <div className="flex items-center gap-2">
+                  <VideoIcon className="w-4 h-4 text-amber-600" />
+                  <span>Galeri Video</span>
+                </div>
+                <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
+              </button>
+            </div>
+
+            <a
+              href="#jadwal"
+              onClick={() => setMobileMenuOpen(false)}
+              className="block px-3 py-2 rounded-lg hover:bg-slate-100"
+            >
+              Jadwal
+            </a>
+            <a
+              href="#pengumuman"
+              onClick={() => setMobileMenuOpen(false)}
+              className="block px-3 py-2 rounded-lg hover:bg-slate-100"
+            >
+              Pengumuman
+            </a>
+            <a
+              href="#kontak"
+              onClick={() => setMobileMenuOpen(false)}
+              className="block px-3 py-2 rounded-lg hover:bg-slate-100"
+            >
+              Kontak
+            </a>
+          </div>
+        )}
       </header>
 
-      {/* 2. HERO SECTION WITH ANIMATED MOVING RAINBOW GRADIENT */}
+      {/* 2. HERO SECTION */}
       <section
         id="beranda"
         className="relative rainbow-animated-hero text-white py-16 px-4 overflow-hidden border-b-4 border-amber-400 shadow-xl"
       >
-        {/* Soft Vignette & Ambient Glow for high contrast & elegance */}
         <div className="absolute inset-0 bg-slate-950/30 backdrop-blur-[1px] pointer-events-none"></div>
         <div className="absolute -top-32 -left-32 w-96 h-96 bg-white/15 rounded-full blur-3xl pointer-events-none"></div>
         <div className="absolute -bottom-32 -right-32 w-96 h-96 bg-amber-300/20 rounded-full blur-3xl pointer-events-none"></div>
-        {/* Animated Rainbow Bottom Accent Line */}
         <div className="absolute bottom-0 left-0 right-0 h-1.5 rainbow-border-bottom"></div>
 
         <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 items-center relative z-10">
@@ -171,7 +384,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               Sistem informasi pengelolaan kegiatan Pekan Olahraga dan Seni, integrasi pendaftaran atlet, verifikasi berkas persyaratan, rekapitulasi nilai, serta pencetakan kartu tanda peserta resmi.
             </p>
 
-            {/* Hero CTA: Validasi Kartu Peserta with High Contrast & Vibrancy */}
+            {/* Hero CTA */}
             <div className="pt-2 flex flex-wrap gap-3">
               <button
                 onClick={onOpenValidasi}
@@ -182,7 +395,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               </button>
             </div>
 
-            {/* Quick Stats Highlights with Frosted Glass Colorful Cards */}
+            {/* Quick Stats Highlights */}
             <div className="pt-6 grid grid-cols-3 gap-3 max-w-lg text-center sm:text-left">
               <div className="p-3.5 rounded-2xl bg-white/20 hover:bg-white/30 border border-white/30 backdrop-blur-md shadow-md transition-all">
                 <span className="block text-2xl font-black text-white font-mono drop-shadow-xs">
@@ -205,7 +418,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </div>
           </div>
 
-          {/* Hero Right Visual Emblem Card with Glassmorphism */}
+          {/* Hero Right Visual Emblem Card */}
           <div className="lg:col-span-4 flex justify-center">
             <div className="relative p-7 rounded-3xl bg-white/20 backdrop-blur-xl border border-white/35 shadow-2xl text-center max-w-xs hover:border-white/50 transition-all">
               <PorseniEmblem size={135} className="mx-auto drop-shadow-lg mb-4" />
@@ -223,7 +436,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         </div>
       </section>
 
-      {/* 3. INFORMASI PORSENI (TENTANG) WITH ATTRACTIVE COLORED CARDS */}
+      {/* 3. INFORMASI PORSENI (TENTANG) */}
       <section id="tentang" className="py-16 px-4 bg-white border-b border-slate-200">
         <div className="max-w-6xl mx-auto space-y-10">
           <div className="text-center max-w-2xl mx-auto space-y-2">
@@ -272,7 +485,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         </div>
       </section>
 
-      {/* 4. CABANG LOMBA (OLAHRAGA & SENI) WITH ATTRACTIVE COLOR CARDS */}
+      {/* 4. CABANG LOMBA */}
       <section id="cabang" className="py-16 px-4 bg-slate-100 border-b border-slate-200">
         <div className="max-w-6xl mx-auto space-y-6">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
@@ -336,7 +549,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </div>
           </div>
 
-          {/* Branch Grid with Colorful Cards */}
+          {/* Branch Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {filteredCabang.map((cabang, idx) => {
               const palette = BRANCH_PALETTES[idx % BRANCH_PALETTES.length];
@@ -345,7 +558,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   key={cabang.id}
                   className={`bg-white rounded-2xl border-2 ${palette.border} p-4 shadow-sm hover:shadow-lg transition-all duration-200 flex flex-col justify-between overflow-hidden relative group`}
                 >
-                  {/* Top Color Accent Line */}
                   <div className={`h-1.5 w-full ${palette.bar} absolute top-0 left-0`}></div>
 
                   <div className="pt-1">
@@ -390,36 +602,40 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         </div>
       </section>
 
-      {/* 5. GALERI FOTO KEGIATAN PORSENI (REQUESTED IN POINT 6) */}
+      {/* 5. GALERI FOTO KEGIATAN (MAKSIMAL 6 FOTO TERBARU DI BERANDA) */}
       <section id="galeri" className="py-16 px-4 bg-white border-b border-slate-200">
         <div className="max-w-6xl mx-auto space-y-8">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
             <div>
-              <div className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-700 uppercase tracking-wider mb-1">
-                <ImageIcon className="w-4 h-4 text-amber-600" />
+              <div className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-800 uppercase tracking-wider mb-1">
+                <ImageIcon className="w-4 h-4 text-emerald-600" />
                 <span>Dokumentasi Resmi</span>
               </div>
               <h2 className="text-2xl font-extrabold text-slate-900">
-                Galeri Foto & Momen Kegiatan PORSENI
+                Galeri Foto Kegiatan
               </h2>
               <p className="text-xs text-slate-500 mt-1">
-                Dokumentasi pembukaan, pertandingan olahraga, panggung kreasi seni, dan momen penganugerahan juara.
+                6 foto terbaru dari berbagai momen kompetisi, seremoni, dan penganugerahan piala.
               </p>
             </div>
 
-            <span className="text-xs font-semibold text-slate-500 bg-slate-100 px-3 py-1.5 rounded-full border border-slate-200">
-              {fotoList.length} Foto Dokumentasi Terarsip
-            </span>
+            <button
+              onClick={() => handleGaleriClick('foto')}
+              className="px-4 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold text-xs rounded-xl border border-emerald-200 transition-colors flex items-center gap-1.5 self-start md:self-auto cursor-pointer"
+            >
+              <span>Lihat Semua Foto ({fotoList.length})</span>
+              <ChevronRight className="w-4 h-4 text-emerald-700" />
+            </button>
           </div>
 
-          {/* Photo Cards Grid */}
+          {/* 6 Photos Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {fotoList.map((foto, index) => {
+            {summaryPhotos.map(foto => {
               const badgeColors = {
                 PEMBUKAAN: 'bg-emerald-600 text-white',
                 OLAHRAGA: 'bg-blue-600 text-white',
                 SENI: 'bg-purple-600 text-white',
-                JUARA: 'bg-amber-500 text-white',
+                JUARA: 'bg-amber-500 text-slate-950 font-black',
                 DOKUMENTASI: 'bg-slate-700 text-white',
               }[foto.kategori] || 'bg-emerald-700 text-white';
 
@@ -428,7 +644,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   key={foto.id}
                   className="bg-white rounded-2xl border-2 border-slate-200 shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden flex flex-col justify-between group"
                 >
-                  <div className="relative aspect-video overflow-hidden bg-slate-900">
+                  <div className="relative aspect-video overflow-hidden bg-slate-900 cursor-pointer" onClick={() => setPreviewPhoto(foto)}>
                     <img
                       src={foto.imageUrl}
                       alt={foto.judul}
@@ -436,7 +652,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     />
                     <div className="absolute top-3 left-3">
-                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider shadow-xs ${badgeColors}`}>
+                      <span className={`px-2.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider shadow-xs ${badgeColors}`}>
                         {foto.kategori}
                       </span>
                     </div>
@@ -469,11 +685,132 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               );
             })}
           </div>
+
+          <div className="text-center pt-2">
+            <button
+              onClick={() => handleGaleriClick('foto')}
+              className="px-6 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs rounded-xl shadow-xs hover:shadow-md transition-all inline-flex items-center gap-2 cursor-pointer"
+            >
+              <span>Lihat Semua Foto</span>
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       </section>
 
-      {/* 6. JADWAL & TIMELINE KEGIATAN */}
-      <section id="jadwal" className="py-16 px-4 bg-slate-100 border-b border-slate-200">
+      {/* 6. VIDEO KEGIATAN (MAKSIMAL 6 VIDEO TERBARU DI BERANDA) */}
+      <section id="video" className="py-16 px-4 bg-slate-100 border-b border-slate-200">
+        <div className="max-w-6xl mx-auto space-y-8">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+            <div>
+              <div className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-700 uppercase tracking-wider mb-1">
+                <VideoIcon className="w-4 h-4 text-amber-600" />
+                <span>Siaran & Liputan Audiovisual</span>
+              </div>
+              <h2 className="text-2xl font-extrabold text-slate-900">
+                Video Kegiatan
+              </h2>
+              <p className="text-xs text-slate-500 mt-1">
+                6 video terbaru liputan pertandingan, highlight laga seru, dan momen megah pentas kreasi.
+              </p>
+            </div>
+
+            <button
+              onClick={() => handleGaleriClick('video')}
+              className="px-4 py-2 bg-amber-50 hover:bg-amber-100 text-amber-900 font-bold text-xs rounded-xl border border-amber-300 transition-colors flex items-center gap-1.5 self-start md:self-auto cursor-pointer"
+            >
+              <span>Lihat Semua Video ({videoList.length})</span>
+              <ChevronRight className="w-4 h-4 text-amber-700" />
+            </button>
+          </div>
+
+          {/* 6 Videos Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {summaryVideos.map(video => {
+              const badgeColors: Record<string, string> = {
+                PEMBUKAAN: 'bg-emerald-600 text-white',
+                OLAHRAGA: 'bg-blue-600 text-white',
+                SENI: 'bg-purple-600 text-white',
+                JUARA: 'bg-amber-500 text-slate-950 font-black',
+                HIGHLIGHT: 'bg-rose-600 text-white',
+                DOKUMENTASI: 'bg-slate-700 text-white',
+              };
+              const currentBadge = badgeColors[video.kategori] || 'bg-emerald-700 text-white';
+
+              const thumb = getVideoThumbnail(video);
+
+              return (
+                <div
+                  key={video.id}
+                  className="bg-white rounded-2xl border-2 border-slate-200 shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden flex flex-col justify-between group"
+                >
+                  <div
+                    className="relative aspect-video overflow-hidden bg-slate-950 cursor-pointer"
+                    onClick={() => setActiveVideo(video)}
+                  >
+                    <img
+                      src={thumb}
+                      alt={video.judul}
+                      referrerPolicy="no-referrer"
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+
+                    <div className="absolute top-3 left-3">
+                      <span className={`px-2.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider shadow-xs ${currentBadge}`}>
+                        {video.kategori}
+                      </span>
+                    </div>
+
+                    {video.durasi && (
+                      <div className="absolute bottom-3 right-3 px-2 py-0.5 bg-black/80 backdrop-blur-xs rounded text-[11px] font-mono text-white font-bold flex items-center gap-1">
+                        <Clock className="w-3 h-3 text-amber-400" />
+                        <span>{video.durasi}</span>
+                      </div>
+                    )}
+
+                    <div className="absolute inset-0 bg-black/30 group-hover:bg-black/50 transition-colors flex items-center justify-center">
+                      <div className="w-14 h-14 rounded-full bg-amber-400 text-slate-950 flex items-center justify-center shadow-2xl group-hover:scale-110 transition-transform">
+                        <Play className="w-6 h-6 fill-slate-950 ml-0.5" />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="p-4 space-y-1.5">
+                    <div className="flex items-center justify-between text-[10px] text-slate-400 font-mono">
+                      <span>{video.tanggal}</span>
+                      <span>PORSENI {settings.tahun}</span>
+                    </div>
+
+                    <h3 className="text-sm font-bold text-slate-900 group-hover:text-emerald-800 transition-colors line-clamp-1">
+                      {video.judul}
+                    </h3>
+
+                    {video.deskripsi && (
+                      <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">
+                        {video.deskripsi}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="text-center pt-2">
+            <button
+              onClick={() => handleGaleriClick('video')}
+              className="px-6 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs rounded-xl shadow-xs hover:shadow-md transition-all inline-flex items-center gap-2 cursor-pointer border border-amber-400"
+            >
+              <Play className="w-4 h-4 fill-slate-950" />
+              <span>Lihat Semua Video</span>
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* 7. JADWAL & TIMELINE KEGIATAN */}
+      <section id="jadwal" className="py-16 px-4 bg-white border-b border-slate-200">
         <div className="max-w-5xl mx-auto space-y-8">
           <div className="text-center max-w-xl mx-auto space-y-1">
             <span className="text-xs font-bold text-emerald-700 uppercase tracking-wider">
@@ -490,7 +827,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           <div className="relative border-l-2 border-emerald-600 ml-4 sm:ml-8 space-y-6">
             {jadwalList.map((item, idx) => (
               <div key={item.id} className="relative pl-6 sm:pl-8">
-                {/* Timeline Node Badge */}
                 <div
                   className={`absolute -left-3.5 top-0.5 w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shadow-xs ${
                     item.status === 'SELESAI'
@@ -503,7 +839,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   {item.status === 'SELESAI' ? '✓' : idx + 1}
                 </div>
 
-                <div className="bg-white rounded-2xl p-5 border-2 border-slate-200 shadow-2xs hover:shadow-md transition-shadow">
+                <div className="bg-slate-50 rounded-2xl p-5 border-2 border-slate-200 shadow-2xs hover:shadow-md transition-shadow">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-1">
                     <h3 className="text-sm font-bold text-slate-900">{item.kegiatan}</h3>
                     <div className="flex items-center gap-2">
@@ -531,8 +867,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         </div>
       </section>
 
-      {/* 7. PENGUMUMAN TERBARU */}
-      <section id="pengumuman" className="py-16 px-4 bg-white border-b border-slate-200">
+      {/* 8. PENGUMUMAN TERBARU */}
+      <section id="pengumuman" className="py-16 px-4 bg-slate-100 border-b border-slate-200">
         <div className="max-w-6xl mx-auto space-y-6">
           <div className="text-center max-w-xl mx-auto space-y-1">
             <span className="text-xs font-bold text-emerald-700 uppercase tracking-wider">
@@ -586,7 +922,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         </div>
       </section>
 
-      {/* 8. FOOTER (Universal, Neutral Branding) */}
+      {/* 9. FOOTER */}
       <footer id="kontak" className="bg-emerald-950 text-white pt-12 pb-8 px-4 border-t-4 border-amber-400">
         <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-8 pb-8 border-b border-emerald-900 text-xs">
           <div className="space-y-3">
@@ -635,6 +971,16 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   Validasi Kartu Peserta
                 </button>
               </li>
+              <li>
+                <button onClick={() => handleGaleriClick('foto')} className="hover:text-amber-300">
+                  Galeri Foto Lengkap
+                </button>
+              </li>
+              <li>
+                <button onClick={() => handleGaleriClick('video')} className="hover:text-amber-300">
+                  Galeri Video Lengkap
+                </button>
+              </li>
             </ul>
           </div>
 
@@ -660,17 +1006,18 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
       {/* PHOTO PREVIEW MODAL */}
       {previewPhoto && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xs">
-          <div className="max-w-3xl w-full bg-white rounded-2xl shadow-2xl overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xs animate-in fade-in">
+          <div className="max-w-3xl w-full bg-white rounded-2xl shadow-2xl overflow-hidden border border-slate-200">
             <div className="relative aspect-video bg-black flex items-center justify-center">
               <img
                 src={previewPhoto.imageUrl}
                 alt={previewPhoto.judul}
+                referrerPolicy="no-referrer"
                 className="max-h-[70vh] w-full object-contain"
               />
               <button
                 onClick={() => setPreviewPhoto(null)}
-                className="absolute top-4 right-4 p-2 bg-black/60 hover:bg-black/90 text-white rounded-full transition-colors"
+                className="absolute top-4 right-4 p-2 bg-black/60 hover:bg-black/90 text-white rounded-full transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -685,6 +1032,98 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               <h3 className="text-base font-extrabold text-slate-900">{previewPhoto.judul}</h3>
               {previewPhoto.deskripsi && (
                 <p className="text-xs text-slate-600 mt-1 leading-relaxed">{previewPhoto.deskripsi}</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* VIDEO PLAYER MODAL */}
+      {activeVideo && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/90 backdrop-blur-xs animate-in fade-in">
+          <div className="max-w-4xl w-full bg-slate-950 rounded-2xl shadow-2xl overflow-hidden border border-slate-700 flex flex-col max-h-[92vh]">
+            <div className="px-5 py-3 bg-slate-900 border-b border-slate-800 flex items-center justify-between text-white">
+              <div className="flex items-center gap-2 truncate pr-2">
+                <VideoIcon className="w-4 h-4 text-amber-400 shrink-0" />
+                <span className="text-xs font-bold truncate">{activeVideo.judul}</span>
+              </div>
+              <button
+                onClick={() => setActiveVideo(null)}
+                className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="relative aspect-video bg-black flex items-center justify-center">
+              {(() => {
+                const parsed = parseVideoUrl(activeVideo.videoUrl);
+                if (parsed.type === 'youtube' && parsed.embedUrl) {
+                  return (
+                    <iframe
+                      src={parsed.embedUrl}
+                      title={activeVideo.judul}
+                      className="w-full h-full border-0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allowFullScreen
+                    />
+                  );
+                } else if (parsed.type === 'drive' && parsed.embedUrl) {
+                  return (
+                    <iframe
+                      src={parsed.embedUrl}
+                      title={activeVideo.judul}
+                      className="w-full h-full border-0"
+                      allow="autoplay; encrypted-media; fullscreen"
+                      allowFullScreen
+                    />
+                  );
+                } else {
+                  return (
+                    <video
+                      controls
+                      autoPlay
+                      playsInline
+                      className="w-full h-full object-contain"
+                      src={activeVideo.videoUrl}
+                    >
+                      Peramban Anda tidak mendukung pemutar video HTML5.
+                    </video>
+                  );
+                }
+              })()}
+            </div>
+
+            <div className="p-5 bg-white text-slate-900 space-y-2">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="px-2.5 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-extrabold rounded-md uppercase">
+                    {activeVideo.kategori}
+                  </span>
+                  <span className="text-xs text-slate-400 font-mono flex items-center gap-1">
+                    <Calendar className="w-3.5 h-3.5" />
+                    {activeVideo.tanggal}
+                  </span>
+                  {activeVideo.durasi && (
+                    <span className="text-xs text-slate-500 font-mono font-bold flex items-center gap-1">
+                      <Clock className="w-3.5 h-3.5 text-amber-500" />
+                      {activeVideo.durasi}
+                    </span>
+                  )}
+                </div>
+                <span className="text-[11px] font-bold text-slate-400 font-mono">
+                  PORSENI {settings.tahun}
+                </span>
+              </div>
+
+              <h3 className="text-base font-extrabold text-slate-900 leading-snug">
+                {activeVideo.judul}
+              </h3>
+
+              {activeVideo.deskripsi && (
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  {activeVideo.deskripsi}
+                </p>
               )}
             </div>
           </div>

@@ -9,6 +9,12 @@ import {
 } from './types';
 import { StorageService } from './services/storage';
 import { AuthService, UserSession } from './services/auth';
+import {
+  setupRealtimeSync,
+  downloadAllFromFirestore,
+  syncDocToFirestore,
+  deleteDocFromFirestore,
+} from './services/firebase';
 
 // Public Components
 import { LandingPage } from './components/landing/LandingPage';
@@ -16,10 +22,13 @@ import { LoginModal } from './components/public/LoginModal';
 import { RegistrasiLembaga } from './components/public/RegistrasiLembaga';
 import { ValidasiPeserta } from './components/public/ValidasiPeserta';
 import { LupaPassword } from './components/public/LupaPassword';
+import { GaleriFoto } from './components/public/GaleriFoto';
+import { GaleriVideo } from './components/public/GaleriVideo';
 
 // Common Components
 import { PorseniEmblem } from './components/common/OfficialLogos';
 import { LembagaStatusBadge } from './components/common/UIComponents';
+import { MultiDeviceModal } from './components/common/MultiDeviceModal';
 
 // Lembaga Components
 import { LembagaDashboard } from './components/lembaga/LembagaDashboard';
@@ -35,6 +44,7 @@ import { AdminVerifikasiPeserta } from './components/admin/AdminVerifikasiPesert
 import { AdminLembaga } from './components/admin/AdminLembaga';
 import { AdminCabang } from './components/admin/AdminCabang';
 import { AdminKegiatan } from './components/admin/AdminKegiatan';
+import { AdminGaleri } from './components/admin/AdminGaleri';
 import { AdminAuditLog } from './components/admin/AdminAuditLog';
 import { AdminBackup } from './components/admin/AdminBackup';
 import { AdminPengaturan } from './components/admin/AdminPengaturan';
@@ -42,6 +52,7 @@ import { AdminLaporan } from './components/admin/AdminLaporan';
 
 // Icons
 import {
+  Image as ImageIcon,
   LayoutDashboard,
   Users,
   Building2,
@@ -67,6 +78,8 @@ import {
   ArrowRight,
   School,
   UserCog,
+  Eye,
+  Smartphone,
 } from 'lucide-react';
 
 export default function App() {
@@ -79,9 +92,14 @@ export default function App() {
   const [pesertaList, setPesertaList] = useState<Peserta[]>([]);
   const [cabangList, setCabangList] = useState<CabangLomba[]>([]);
 
+  // Multi-Device Modal State
+  const [showMultiDeviceModal, setShowMultiDeviceModal] = useState(false);
+
   // Navigation / Views
-  // Public: 'landing' | 'registrasi-lembaga' | 'validasi-peserta' | 'lupa-password'
-  const [publicView, setPublicView] = useState<'landing' | 'registrasi-lembaga' | 'validasi-peserta' | 'lupa-password'>('landing');
+  // Public: 'landing' | 'registrasi-lembaga' | 'validasi-peserta' | 'lupa-password' | 'galeri-foto' | 'galeri-video'
+  const [publicView, setPublicView] = useState<
+    'landing' | 'registrasi-lembaga' | 'validasi-peserta' | 'lupa-password' | 'galeri-foto' | 'galeri-video'
+  >('landing');
   const [validasiQueryId, setValidasiQueryId] = useState('');
   const [loginModalRole, setLoginModalRole] = useState<UserRole | null>(null);
 
@@ -110,11 +128,31 @@ export default function App() {
   };
 
   useEffect(() => {
+    let cleanupSync: (() => void) | undefined;
+
     const setup = async () => {
       await StorageService.init();
+
+      // Connect StorageService mutations to Firestore Cloud in the background
+      StorageService.setCloudSyncHandler((action, collectionName, id, data) => {
+        if (action === 'set' && data) {
+          syncDocToFirestore(collectionName, id, data);
+        } else if (action === 'delete') {
+          deleteDocFromFirestore(collectionName, id);
+        }
+      });
+
       const currentSession = AuthService.getSession();
       setSession(currentSession);
       await reloadData();
+
+      // Silent initial pull from Firestore Cloud to ensure multi-device freshness
+      try {
+        await downloadAllFromFirestore();
+        await reloadData();
+      } catch {
+        // offline or local fallback
+      }
 
       // Check URL hash for QR validation links: e.g. #validasi?id=PORSENI-2026-00101
       const hash = window.location.hash;
@@ -128,8 +166,27 @@ export default function App() {
       }
 
       setInitialized(true);
+
+      // Start real-time multi-device sync
+      cleanupSync = setupRealtimeSync(() => {
+        reloadData();
+      });
     };
+
     setup();
+
+    const handleSyncEvents = () => {
+      reloadData();
+    };
+
+    window.addEventListener('porseni_cloud_synced', handleSyncEvents);
+    window.addEventListener('porseni_spreadsheet_synced', handleSyncEvents);
+
+    return () => {
+      if (cleanupSync) cleanupSync();
+      window.removeEventListener('porseni_cloud_synced', handleSyncEvents);
+      window.removeEventListener('porseni_spreadsheet_synced', handleSyncEvents);
+    };
   }, []);
 
   const handleLogout = () => {
@@ -174,6 +231,27 @@ export default function App() {
               setValidasiQueryId('');
               setPublicView('validasi-peserta');
             }}
+            onNavigateGaleri={tab => {
+              if (tab === 'foto') setPublicView('galeri-foto');
+              else if (tab === 'video') setPublicView('galeri-video');
+            }}
+            onOpenMultiDevice={() => setShowMultiDeviceModal(true)}
+          />
+        )}
+
+        {publicView === 'galeri-foto' && (
+          <GaleriFoto
+            onBackToHome={() => setPublicView('landing')}
+            onNavigateVideo={() => setPublicView('galeri-video')}
+            onOpenLogin={role => setLoginModalRole(role)}
+          />
+        )}
+
+        {publicView === 'galeri-video' && (
+          <GaleriVideo
+            onBackToHome={() => setPublicView('landing')}
+            onNavigateFoto={() => setPublicView('galeri-foto')}
+            onOpenLogin={role => setLoginModalRole(role)}
           />
         )}
 
@@ -220,14 +298,25 @@ export default function App() {
             }}
           />
         )}
+
+        {/* Multi-Device Access & Cloud Guide Modal */}
+        <MultiDeviceModal
+          isOpen={showMultiDeviceModal}
+          onClose={() => setShowMultiDeviceModal(false)}
+          onShowToast={addToast}
+        />
       </>
     );
   }
 
   // Current logged in Lembaga (if role is Lembaga)
-  const currentLembaga = lembagaList.find(l => l.id === session.user.lembagaId);
-  const userPesertaList = session.user.role === 'LEMBAGA'
-    ? pesertaList.filter(p => p.lembagaId === session.user.lembagaId)
+  const currentLembaga =
+    lembagaList.find(l => l.id === session.user.lembagaId) ||
+    lembagaList.find(l => l.username?.toLowerCase() === session.user.username?.toLowerCase()) ||
+    lembagaList.find(l => l.emailLembaga?.toLowerCase() === session.user.email?.toLowerCase()) ||
+    lembagaList[0];
+  const userPesertaList = session.user.role === 'LEMBAGA' && currentLembaga
+    ? pesertaList.filter(p => p.lembagaId === currentLembaga.id)
     : pesertaList;
 
   // --- AUTHENTICATED PORTALS (ADMIN OR LEMBAGA) ---
@@ -260,7 +349,18 @@ export default function App() {
           </div>
 
           {/* Right Header User Profile & Action */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* Multi-Device & Cloud Real-Time Indicator / Button */}
+            <button
+              onClick={() => setShowMultiDeviceModal(true)}
+              className="px-2.5 py-1.5 rounded-lg bg-emerald-900/90 hover:bg-emerald-800 border border-emerald-700/70 text-emerald-100 hover:text-white transition-all flex items-center gap-1.5 text-xs font-semibold shadow-2xs cursor-pointer"
+              title="Akses aplikasi di HP / Laptop lain & Real-Time Cloud"
+            >
+              <Smartphone className="w-3.5 h-3.5 text-amber-300" />
+              <span className="hidden md:inline">Buka di HP / Multi-Device</span>
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse ml-0.5"></span>
+            </button>
+
             {session.user.role === 'LEMBAGA' && currentLembaga && (
               <div className="hidden sm:block">
                 <LembagaStatusBadge status={currentLembaga.status} />
@@ -373,9 +473,29 @@ export default function App() {
                       setMobileMenuOpen(false);
                     }}
                   />
+                  <SidebarItem
+                    icon={<ImageIcon className="w-4 h-4" />}
+                    label="Galeri"
+                    active={activeTab === 'galeri-admin'}
+                    count={StorageService.getFotoKegiatan().length + StorageService.getVideoKegiatan().length}
+                    onClick={() => {
+                      setActiveTab('galeri-admin');
+                      setMobileMenuOpen(false);
+                    }}
+                  />
                   <div className="pt-2 pb-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider px-3">
                     Pelaporan & Kartu
                   </div>
+                  <SidebarItem
+                    icon={<Printer className="w-4 h-4" />}
+                    label="Cetak Kartu Peserta"
+                    active={activeTab === 'cetak-kartu-admin'}
+                    count={pesertaList.filter(p => p.status === 'TERVERIFIKASI').length}
+                    onClick={() => {
+                      setActiveTab('cetak-kartu-admin');
+                      setMobileMenuOpen(false);
+                    }}
+                  />
                   <SidebarItem
                     icon={<FileSpreadsheet className="w-4 h-4" />}
                     label="Laporan & Rekap"
@@ -460,8 +580,8 @@ export default function App() {
                     }}
                   />
                   <SidebarItem
-                    icon={<Printer className="w-4 h-4" />}
-                    label="Cetak Kartu Peserta"
+                    icon={<Eye className="w-4 h-4" />}
+                    label="Pratinjau Kartu Peserta"
                     active={activeTab === 'kartu'}
                     count={userPesertaList.filter(p => p.status === 'TERVERIFIKASI').length}
                     onClick={() => {
@@ -552,6 +672,21 @@ export default function App() {
               {activeTab === 'kegiatan' && (
                 <AdminKegiatan
                   onRefresh={reloadData}
+                  onShowToast={addToast}
+                />
+              )}
+              {activeTab === 'galeri-admin' && (
+                <AdminGaleri
+                  onRefresh={reloadData}
+                  onShowToast={addToast}
+                />
+              )}
+              {activeTab === 'cetak-kartu-admin' && (
+                <LembagaKartu
+                  lembaga={lembagaList[0]}
+                  pesertaList={pesertaList}
+                  cabangList={cabangList}
+                  lembagaList={lembagaList}
                   onShowToast={addToast}
                 />
               )}
@@ -661,6 +796,13 @@ export default function App() {
           )}
         </main>
       </div>
+
+      {/* Multi-Device Access & Cloud Real-Time Modal */}
+      <MultiDeviceModal
+        isOpen={showMultiDeviceModal}
+        onClose={() => setShowMultiDeviceModal(false)}
+        onShowToast={addToast}
+      />
     </div>
   );
 }

@@ -21,6 +21,7 @@ import {
   X,
   FileCheck,
   AlertTriangle,
+  ShieldCheck,
 } from 'lucide-react';
 
 interface LembagaPesertaProps {
@@ -331,6 +332,10 @@ export const LembagaPeserta: React.FC<LembagaPesertaProps> = ({
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
+      if (file.size > 3 * 1024 * 1024) {
+        onShowToast('warning', 'Ukuran foto terlalu besar. Maksimal 3MB.');
+        return;
+      }
       const reader = new FileReader();
       reader.onload = event => {
         setFormInput(prev => ({
@@ -346,29 +351,38 @@ export const LembagaPeserta: React.FC<LembagaPesertaProps> = ({
   const handleDocumentFileChange = (docId: string, e: React.ChangeEvent<HTMLInputElement>) => {
     if (!managingDocsPeserta || !e.target.files || !e.target.files[0]) return;
     const file = e.target.files[0];
+    if (file.size > 5 * 1024 * 1024) {
+      onShowToast('warning', 'Ukuran berkas terlalu besar. Maksimal 5MB.');
+      return;
+    }
 
-    const updatedDocs = managingDocsPeserta.dokumenList.map(d => {
-      if (d.id === docId) {
-        return {
-          ...d,
-          namaFile: file.name,
-          fileUrl: 'data:application/pdf;base64,mock',
-          status: 'MENUNGGU' as const,
-          uploadedAt: new Date().toISOString(),
-        };
-      }
-      return d;
-    });
+    const reader = new FileReader();
+    reader.onload = event => {
+      const base64Url = (event.target?.result as string) || '';
+      const updatedDocs = managingDocsPeserta.dokumenList.map(d => {
+        if (d.id === docId) {
+          return {
+            ...d,
+            namaFile: file.name,
+            fileUrl: base64Url,
+            status: 'MENUNGGU' as const,
+            uploadedAt: new Date().toISOString(),
+          };
+        }
+        return d;
+      });
 
-    const updatedPeserta: Peserta = {
-      ...managingDocsPeserta,
-      dokumenList: updatedDocs,
+      const updatedPeserta: Peserta = {
+        ...managingDocsPeserta,
+        dokumenList: updatedDocs,
+      };
+
+      StorageService.savePeserta(updatedPeserta);
+      setManagingDocsPeserta(updatedPeserta);
+      onRefresh();
+      onShowToast('success', `Dokumen "${file.name}" berhasil diunggah.`);
     };
-
-    StorageService.savePeserta(updatedPeserta);
-    setManagingDocsPeserta(updatedPeserta);
-    onRefresh();
-    onShowToast('success', `Dokumen "${file.name}" berhasil diunggah.`);
+    reader.readAsDataURL(file);
   };
 
   // Filtered & Paginated List
@@ -562,14 +576,14 @@ export const LembagaPeserta: React.FC<LembagaPesertaProps> = ({
                             <Eye className="w-4 h-4" />
                           </button>
 
-                          {/* Print Card (Only if verified) */}
+                          {/* Pratinjau Kartu Peserta (Hanya data terverifikasi) */}
                           <button
-                            title="Cetak Kartu Peserta"
+                            title="Pratinjau Kartu Peserta"
                             disabled={p.status !== 'TERVERIFIKASI' && p.status !== 'FINAL'}
                             onClick={() => setViewingKartuPeserta(p)}
-                            className="p-1.5 text-emerald-700 hover:bg-emerald-50 disabled:opacity-30 disabled:cursor-not-allowed rounded-md"
+                            className="p-1.5 text-emerald-700 hover:bg-emerald-50 disabled:opacity-30 disabled:cursor-not-allowed rounded-md cursor-pointer"
                           >
-                            <Printer className="w-4 h-4" />
+                            <ShieldCheck className="w-4 h-4" />
                           </button>
 
                           {/* Edit */}
@@ -985,7 +999,7 @@ export const LembagaPeserta: React.FC<LembagaPesertaProps> = ({
           <div className="max-w-lg w-full bg-white rounded-2xl shadow-2xl border border-slate-200 p-6 my-auto animate-in fade-in zoom-in-95">
             <div className="flex items-center justify-between pb-3 mb-4 border-b border-slate-200">
               <h3 className="text-sm font-bold text-slate-900">
-                Kartu Tanda Peserta Resmi
+                Pratinjau Kartu Peserta Resmi
               </h3>
               <button
                 onClick={() => setViewingKartuPeserta(null)}
@@ -999,6 +1013,7 @@ export const LembagaPeserta: React.FC<LembagaPesertaProps> = ({
               peserta={viewingKartuPeserta}
               lembaga={lembaga}
               cabang={cabangList.find(c => c.id === viewingKartuPeserta.cabangId)}
+              showPrintActions={false}
             />
 
             <div className="mt-4 pt-3 border-t border-slate-200 text-center">
@@ -1088,10 +1103,10 @@ export const LembagaPeserta: React.FC<LembagaPesertaProps> = ({
                       setViewingKartuPeserta(viewingDetailPeserta);
                       setViewingDetailPeserta(null);
                     }}
-                    className="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-lg flex items-center gap-1.5"
+                    className="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-lg flex items-center gap-1.5 cursor-pointer"
                   >
-                    <Printer className="w-3.5 h-3.5" />
-                    <span>Cetak Kartu</span>
+                    <Eye className="w-3.5 h-3.5" />
+                    <span>Pratinjau Kartu</span>
                   </button>
                 )}
                 <button
