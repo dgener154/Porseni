@@ -37,7 +37,14 @@ import {
   X,
   ArrowRight,
   Smartphone,
+  Download,
+  Printer,
+  FileText,
 } from 'lucide-react';
+import {
+  downloadAnnouncementAttachment,
+  printAnnouncementDocument,
+} from '../../services/announcementDownload';
 
 interface LandingPageProps {
   onOpenLogin: (role: 'ADMIN' | 'LEMBAGA') => void;
@@ -68,7 +75,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   const [settings] = useState<PengaturanSistem>(StorageService.getPengaturan());
   const [cabangList] = useState<CabangLomba[]>(StorageService.getCabang());
   const [jadwalList] = useState<JadwalKegiatan[]>(StorageService.getJadwal());
-  const [pengumumanList] = useState<Pengumuman[]>(StorageService.getPengumuman());
+  const [pengumumanList, setPengumumanList] = useState<Pengumuman[]>(StorageService.getPengumuman());
+  const [selectedAnnouncement, setSelectedAnnouncement] = useState<Pengumuman | null>(null);
   const [fotoList, setFotoList] = useState<FotoKegiatan[]>([]);
   const [videoList, setVideoList] = useState<VideoKegiatan[]>([]);
 
@@ -93,17 +101,24 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       (a, b) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime()
     );
     setVideoList(sortedVideos);
+
+    setPengumumanList(StorageService.getPengumuman());
   };
 
   useEffect(() => {
     loadMedia();
     const handleFotoUpdate = () => loadMedia();
     const handleVideoUpdate = () => loadMedia();
+    const handlePengumumanUpdate = () => {
+      setPengumumanList(StorageService.getPengumuman());
+    };
     window.addEventListener('porseni_foto_updated', handleFotoUpdate);
     window.addEventListener('porseni_video_updated', handleVideoUpdate);
+    window.addEventListener('porseni_cloud_synced', handlePengumumanUpdate);
     return () => {
       window.removeEventListener('porseni_foto_updated', handleFotoUpdate);
       window.removeEventListener('porseni_video_updated', handleVideoUpdate);
+      window.removeEventListener('porseni_cloud_synced', handlePengumumanUpdate);
     };
   }, []);
 
@@ -892,58 +907,109 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         </div>
       </section>
 
-      {/* 8. PENGUMUMAN TERBARU */}
+      {/* 8. PENGUMUMAN TERBARU & PAPAN INFORMASI */}
       <section id="pengumuman" className="py-16 px-4 bg-slate-100 border-b border-slate-200">
         <div className="max-w-6xl mx-auto space-y-6">
           <div className="text-center max-w-xl mx-auto space-y-1">
             <span className="text-xs font-bold text-emerald-700 uppercase tracking-wider">
-              Papan Informasi
+              Papan Informasi Resmi
             </span>
             <h2 className="text-2xl font-extrabold text-slate-900">
-              Pengumuman & Surat Edaran Resmi
+              Pengumuman & Surat Edaran
             </h2>
             <p className="text-xs text-slate-500">
-              Informasi terkini dari Panitia Pelaksana PORSENI {settings.tahun}.
+              Klik pada pengumuman untuk membuka rincian lengkap serta mengunduh berkas lampiran.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            {pengumumanList.map(ann => (
-              <div
-                key={ann.id}
-                className="bg-white rounded-2xl border-2 border-emerald-100 p-5 shadow-xs hover:shadow-md transition-shadow flex flex-col justify-between"
-              >
-                <div>
-                  <div className="flex items-center justify-between text-xs text-slate-500 mb-2">
-                    <span className="font-semibold text-emerald-700">{ann.kategori}</span>
-                    <span className="font-mono text-[11px]">{ann.tanggal}</span>
-                  </div>
-
-                  <h3 className="text-sm font-bold text-slate-900 leading-snug mb-2 flex items-start gap-1.5">
-                    {ann.isNew && (
-                      <span className="px-1.5 py-0.2 bg-rose-600 text-white font-extrabold text-[9px] rounded uppercase shrink-0">
-                        BARU
-                      </span>
-                    )}
-                    <span>{ann.judul}</span>
-                  </h3>
-
-                  <p className="text-xs text-slate-600 leading-relaxed line-clamp-3 mb-4">
-                    {ann.isi}
-                  </p>
-                </div>
-
-                {ann.lampiranNama && (
-                  <div className="pt-3 border-t border-slate-100">
-                    <span className="text-[11px] text-emerald-700 hover:underline flex items-center gap-1 font-semibold">
-                      <BookOpen className="w-3.5 h-3.5" />
-                      <span>{ann.lampiranNama}</span>
-                    </span>
-                  </div>
-                )}
+          {pengumumanList.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center max-w-md mx-auto space-y-3 shadow-2xs">
+              <div className="w-12 h-12 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto">
+                <Bell className="w-6 h-6" />
               </div>
-            ))}
-          </div>
+              <h4 className="text-sm font-bold text-slate-800">Belum Ada Pengumuman Terbit</h4>
+              <p className="text-xs text-slate-500">
+                Pengumuman dan edaran resmi dari Panitia Pelaksana akan ditampilkan di sini.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+              {pengumumanList.map(ann => {
+                const categoryColor =
+                  ann.kategori === 'PENTING'
+                    ? 'bg-rose-100 text-rose-800 border-rose-200'
+                    : ann.kategori === 'JADWAL'
+                    ? 'bg-purple-100 text-purple-800 border-purple-200'
+                    : ann.kategori === 'HASIL'
+                    ? 'bg-amber-100 text-amber-800 border-amber-200'
+                    : 'bg-emerald-100 text-emerald-800 border-emerald-200';
+
+                return (
+                  <div
+                    key={ann.id}
+                    onClick={() => setSelectedAnnouncement(ann)}
+                    className="bg-white rounded-2xl border-2 border-slate-200 hover:border-emerald-500 p-5 shadow-xs hover:shadow-lg transition-all flex flex-col justify-between cursor-pointer group select-none"
+                  >
+                    <div>
+                      <div className="flex items-center justify-between text-xs text-slate-500 mb-2.5">
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold border ${categoryColor}`}>
+                          {ann.kategori}
+                        </span>
+                        <span className="font-mono text-[11px] flex items-center gap-1 text-slate-400">
+                          <Calendar className="w-3 h-3 text-slate-400" />
+                          {ann.tanggal}
+                        </span>
+                      </div>
+
+                      <h3 className="text-sm font-bold text-slate-900 group-hover:text-emerald-800 leading-snug mb-2 flex items-start gap-1.5 transition-colors">
+                        {ann.isNew && (
+                          <span className="px-1.5 py-0.2 bg-rose-600 text-white font-extrabold text-[9px] rounded uppercase shrink-0 mt-0.5">
+                            BARU
+                          </span>
+                        )}
+                        <span>{ann.judul}</span>
+                      </h3>
+
+                      <p className="text-xs text-slate-600 leading-relaxed line-clamp-3 mb-3">
+                        {ann.isi}
+                      </p>
+                    </div>
+
+                    <div className="space-y-2.5 pt-2 border-t border-slate-100">
+                      {ann.lampiranNama && (
+                        <div className="p-2 bg-emerald-50/70 border border-emerald-200 rounded-lg flex items-center justify-between text-[11px] text-emerald-950">
+                          <span className="flex items-center gap-1.5 font-bold truncate pr-2">
+                            <FileText className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                            <span className="truncate">{ann.lampiranNama}</span>
+                          </span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              downloadAnnouncementAttachment(ann, settings.namaWebsite, settings.tahun);
+                            }}
+                            className="px-2.5 py-1 bg-emerald-700 hover:bg-emerald-800 text-white rounded font-bold text-[10px] flex items-center gap-1 shrink-0 transition-colors shadow-2xs cursor-pointer"
+                            title="Unduh berkas lampiran ini"
+                          >
+                            <Download className="w-3 h-3" />
+                            <span>Unduh</span>
+                          </button>
+                        </div>
+                      )}
+
+                      <div className="flex items-center justify-between text-xs pt-1">
+                        <span className="text-[11px] font-bold text-emerald-700 group-hover:text-emerald-900 flex items-center gap-1">
+                          <span>Buka Pengumuman</span>
+                          <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                        </span>
+                        <span className="text-[10px] text-slate-400">Klik untuk melihat</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </section>
 
@@ -1150,6 +1216,123 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   {activeVideo.deskripsi}
                 </p>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Detail Pengumuman & Download Berkas */}
+      {selectedAnnouncement && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-xs overflow-y-auto">
+          <div className="max-w-2xl w-full bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden my-auto animate-in fade-in zoom-in-95 flex flex-col max-h-[92vh]">
+            {/* Modal Header */}
+            <div className="bg-gradient-to-r from-emerald-950 via-slate-900 to-emerald-950 text-white px-6 py-4 flex items-center justify-between border-b-2 border-amber-400 shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-900 flex items-center justify-center text-amber-300 border border-emerald-800 shrink-0">
+                  <Bell className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="px-2 py-0.5 rounded text-[10px] font-extrabold uppercase bg-emerald-700 text-emerald-100 border border-emerald-600">
+                      {selectedAnnouncement.kategori}
+                    </span>
+                    {selectedAnnouncement.isNew && (
+                      <span className="px-2 py-0.5 rounded text-[10px] font-extrabold uppercase bg-rose-600 text-white">
+                        BARU
+                      </span>
+                    )}
+                  </div>
+                  <h3 className="text-base font-extrabold tracking-tight mt-0.5 text-white">
+                    Papan Pengumuman Resmi
+                  </h3>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedAnnouncement(null)}
+                className="p-1.5 text-slate-300 hover:text-white rounded-lg hover:bg-emerald-900 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 overflow-y-auto space-y-5 text-slate-800">
+              {/* Meta Bar */}
+              <div className="flex flex-wrap items-center justify-between gap-2 p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-600">
+                <div className="flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-emerald-700" />
+                  <span>Tanggal Publikasi: <strong className="text-slate-900 font-mono">{selectedAnnouncement.tanggal}</strong></span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4 text-emerald-700" />
+                  <span>Penerbit: <strong className="text-slate-900">Panitia Pelaksana PORSENI</strong></span>
+                </div>
+              </div>
+
+              {/* Title */}
+              <div>
+                <h2 className="text-lg font-extrabold text-slate-900 leading-snug">
+                  {selectedAnnouncement.judul}
+                </h2>
+                <div className="h-1 w-16 bg-emerald-600 rounded-full mt-2"></div>
+              </div>
+
+              {/* Full Text Content */}
+              <div className="p-4 bg-emerald-50/40 rounded-xl border border-emerald-100 text-xs text-slate-700 leading-relaxed whitespace-pre-line space-y-2">
+                {selectedAnnouncement.isi}
+              </div>
+
+              {/* Attachment & Download Box */}
+              <div className="p-4 bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50 rounded-xl border-2 border-emerald-300 shadow-2xs space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-emerald-700 text-white flex items-center justify-center shrink-0 mt-0.5">
+                      <FileText className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800 block">
+                        Dokumen / Berkas Lampiran
+                      </span>
+                      <span className="font-extrabold text-xs text-emerald-950 block">
+                        {selectedAnnouncement.lampiranNama || `Surat_Edaran_${selectedAnnouncement.id}.doc`}
+                      </span>
+                      <span className="text-[11px] text-emerald-700">
+                        Format resmi terverifikasi. Dapat diunduh dan dibuka langsung di komputer maupun HP.
+                      </span>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => downloadAnnouncementAttachment(selectedAnnouncement, settings.namaWebsite, settings.tahun)}
+                    className="px-4 py-2.5 text-xs font-bold text-white bg-emerald-700 hover:bg-emerald-800 rounded-lg shadow-xs flex items-center justify-center gap-2 transition-all cursor-pointer self-start sm:self-auto shrink-0"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span>Unduh Berkas Lampiran</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Footer Actions */}
+              <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-100 text-xs">
+                <button
+                  type="button"
+                  onClick={() => printAnnouncementDocument(selectedAnnouncement, settings.namaWebsite, settings.tahun)}
+                  className="px-3.5 py-2 text-xs font-bold text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Printer className="w-4 h-4 text-slate-600" />
+                  <span>Cetak / Simpan PDF Resmi</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setSelectedAnnouncement(null)}
+                  className="px-5 py-2 text-xs font-bold text-slate-600 hover:text-slate-900 bg-white hover:bg-slate-100 border border-slate-300 rounded-lg transition-colors cursor-pointer"
+                >
+                  Tutup
+                </button>
+              </div>
             </div>
           </div>
         </div>

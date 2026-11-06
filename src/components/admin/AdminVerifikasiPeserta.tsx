@@ -21,6 +21,10 @@ import {
   X,
   MessageCircle,
   Send,
+  Trash2,
+  CheckSquare,
+  Square,
+  AlertOctagon,
 } from 'lucide-react';
 
 interface AdminVerifikasiPesertaProps {
@@ -78,6 +82,23 @@ export const AdminVerifikasiPeserta: React.FC<AdminVerifikasiPesertaProps> = ({
     phone: '',
     tipe: 'SUKSES',
     pesan: '',
+  });
+
+  // Checkbox Selection for Rejected Participants
+  const [selectedRejectedIds, setSelectedRejectedIds] = useState<string[]>([]);
+
+  // Confirm Delete Modal State
+  const [confirmDelete, setConfirmDelete] = useState<{
+    isOpen: boolean;
+    mode: 'ALL_DITOLAK' | 'SELECTED' | 'SINGLE';
+    count: number;
+    targetIds: string[];
+    singleName?: string;
+  }>({
+    isOpen: false,
+    mode: 'SINGLE',
+    count: 0,
+    targetIds: [],
   });
 
   const formatWaPhone = (num: string): string => {
@@ -245,6 +266,78 @@ _Panitia Pelaksana ${namaKegiatan}_`;
     currentPage * rowsPerPage
   );
 
+  // Rejected participants data calculations
+  const allDitolakList = pesertaList.filter(p => p.status === 'DITOLAK');
+  const totalDitolakAll = allDitolakList.length;
+
+  const filteredDitolakList = filtered.filter(p => p.status === 'DITOLAK');
+  const pageDitolakList = paginated.filter(p => p.status === 'DITOLAK');
+  const isAllPageDitolakSelected =
+    pageDitolakList.length > 0 &&
+    pageDitolakList.every(p => selectedRejectedIds.includes(p.id));
+
+  // Toggle selection for a single rejected participant
+  const handleToggleSelectRejected = (p: Peserta) => {
+    if (p.status !== 'DITOLAK') {
+      onShowToast('warning', 'Hanya data peserta berstatus DITOLAK yang dapat dicentang dan dihapus.');
+      return;
+    }
+    setSelectedRejectedIds(prev =>
+      prev.includes(p.id) ? prev.filter(id => id !== p.id) : [...prev, p.id]
+    );
+  };
+
+  // Toggle selection for all rejected participants on the current page
+  const handleToggleSelectAllPage = () => {
+    if (pageDitolakList.length === 0) {
+      onShowToast('info', 'Tidak ada data berstatus DITOLAK pada halaman ini.');
+      return;
+    }
+    if (isAllPageDitolakSelected) {
+      const pageIds = new Set(pageDitolakList.map(p => p.id));
+      setSelectedRejectedIds(prev => prev.filter(id => !pageIds.has(id)));
+    } else {
+      const combined = new Set([...selectedRejectedIds, ...pageDitolakList.map(p => p.id)]);
+      setSelectedRejectedIds(Array.from(combined));
+    }
+  };
+
+  // Select all filtered rejected participants
+  const handleSelectAllFilteredDitolak = () => {
+    if (filteredDitolakList.length === 0) {
+      onShowToast('info', 'Tidak ada peserta berstatus DITOLAK yang sesuai filter saat ini.');
+      return;
+    }
+    const combined = new Set([...selectedRejectedIds, ...filteredDitolakList.map(p => p.id)]);
+    setSelectedRejectedIds(Array.from(combined));
+    onShowToast('info', `${filteredDitolakList.length} peserta berstatus DITOLAK telah dicentang.`);
+  };
+
+  // Execute deletion of rejected participants
+  const handleExecuteDelete = () => {
+    if (!confirmDelete.targetIds || confirmDelete.targetIds.length === 0) return;
+    const count = confirmDelete.targetIds.length;
+    StorageService.deleteMultiplePeserta(confirmDelete.targetIds);
+
+    StorageService.addAuditLog({
+      user: 'admin',
+      role: 'ADMIN',
+      aktivitas: confirmDelete.mode === 'ALL_DITOLAK' ? 'Hapus Total Peserta Ditolak' : 'Hapus Peserta Ditolak',
+      rincian: `Menghapus permanen ${count} data peserta berstatus DITOLAK dari sistem verifikasi.`,
+      ip: '127.0.0.1',
+      status: 'SUKSES',
+    });
+
+    const deletedSet = new Set(confirmDelete.targetIds);
+    setSelectedRejectedIds(prev => prev.filter(id => !deletedSet.has(id)));
+    if (selectedPeserta && deletedSet.has(selectedPeserta.id)) {
+      setSelectedPeserta(null);
+    }
+    setConfirmDelete({ isOpen: false, mode: 'SINGLE', count: 0, targetIds: [] });
+    onRefresh();
+    onShowToast('success', `Berhasil menghapus ${count} data peserta berstatus DITOLAK.`);
+  };
+
   const openAction = (peserta: Peserta, type: 'VERIFIKASI' | 'TOLAK' | 'PERBAIKAN' | 'BATALKAN') => {
     setActionModal({
       isOpen: true,
@@ -319,9 +412,27 @@ _Panitia Pelaksana ${namaKegiatan}_`;
               Audit data identitas, foto, dokumen persyaratan, dan tetapkan status keabsahan.
             </p>
           </div>
-          <span className="text-xs text-emerald-900 bg-emerald-100 font-bold px-3 py-1 rounded-full self-start sm:self-auto">
-            {filtered.length} Peserta Terfilter
-          </span>
+          <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+            <span className="text-xs text-emerald-900 bg-emerald-100 font-bold px-3 py-1.5 rounded-full">
+              {filtered.length} Peserta Terfilter
+            </span>
+            {totalDitolakAll > 0 && (
+              <button
+                type="button"
+                onClick={() => setConfirmDelete({
+                  isOpen: true,
+                  mode: 'ALL_DITOLAK',
+                  count: totalDitolakAll,
+                  targetIds: allDitolakList.map(p => p.id),
+                })}
+                className="px-3.5 py-1.5 bg-rose-700 hover:bg-rose-800 text-white font-bold text-xs rounded-lg shadow-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+                title="Hapus total seluruh data peserta yang berstatus DITOLAK dari sistem"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Hapus Total Ditolak ({totalDitolakAll})</span>
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-5 gap-3 pt-2 border-t border-slate-100 text-xs">
@@ -409,13 +520,71 @@ _Panitia Pelaksana ${namaKegiatan}_`;
         </div>
       </div>
 
+      {/* Floating Bulk Action Bar for Checked Rejected Items */}
+      {selectedRejectedIds.length > 0 && (
+        <div className="bg-rose-50 border-2 border-rose-300 rounded-xl p-3.5 flex flex-wrap items-center justify-between gap-3 text-xs shadow-xs animate-in fade-in">
+          <div className="flex items-center gap-2 text-rose-950 font-bold">
+            <CheckSquare className="w-4 h-4 text-rose-700 shrink-0" />
+            <span>
+              <strong>{selectedRejectedIds.length}</strong> peserta berstatus <span className="bg-rose-200 text-rose-900 px-1.5 py-0.2 rounded font-extrabold">DITOLAK</span> dipilih untuk dihapus
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleSelectAllFilteredDitolak}
+              className="px-2.5 py-1 text-[11px] font-bold text-rose-800 hover:bg-rose-100 rounded-lg border border-rose-300 transition-colors cursor-pointer"
+            >
+              Pilih Semua Ditolak ({filteredDitolakList.length})
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSelectedRejectedIds([])}
+              className="px-2.5 py-1 text-[11px] font-semibold text-slate-600 hover:bg-white rounded-lg border border-slate-300 transition-colors cursor-pointer"
+            >
+              Batal Pilih
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setConfirmDelete({
+                isOpen: true,
+                mode: 'SELECTED',
+                count: selectedRejectedIds.length,
+                targetIds: selectedRejectedIds,
+              })}
+              className="px-3.5 py-1.5 bg-rose-700 hover:bg-rose-800 text-white font-bold rounded-lg shadow-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Hapus Terpilih ({selectedRejectedIds.length})</span>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Table Console */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead className="bg-slate-50 border-b border-slate-200 text-slate-700 font-bold uppercase text-[10px]">
               <tr>
-                <th className="px-4 py-3">No</th>
+                <th className="px-3 py-3 w-10 text-center">
+                  <input
+                    type="checkbox"
+                    checked={isAllPageDitolakSelected}
+                    disabled={pageDitolakList.length === 0}
+                    onChange={handleToggleSelectAllPage}
+                    title={
+                      pageDitolakList.length === 0
+                        ? 'Tidak ada peserta berstatus DITOLAK pada halaman ini'
+                        : 'Centang semua peserta berstatus DITOLAK pada halaman ini'
+                    }
+                    className="rounded border-slate-300 text-rose-600 focus:ring-rose-500 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                  />
+                </th>
+                <th className="px-3 py-3">No</th>
                 <th className="px-4 py-3">No. Peserta</th>
                 <th className="px-4 py-3">Nama & NISN</th>
                 <th className="px-4 py-3">Lembaga Asal</th>
@@ -427,7 +596,7 @@ _Panitia Pelaksana ${namaKegiatan}_`;
             <tbody className="divide-y divide-slate-100">
               {paginated.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="p-8 text-center text-slate-400">
+                  <td colSpan={8} className="p-8 text-center text-slate-400">
                     Tidak ada data peserta yang memenuhi kriteria filter.
                   </td>
                 </tr>
@@ -435,10 +604,32 @@ _Panitia Pelaksana ${namaKegiatan}_`;
                 paginated.map((p, idx) => {
                   const lembaga = lembagaList.find(l => l.id === p.lembagaId);
                   const cabang = cabangList.find(c => c.id === p.cabangId);
+                  const isChecked = selectedRejectedIds.includes(p.id);
 
                   return (
-                    <tr key={p.id} className="hover:bg-slate-50 transition-colors">
-                      <td className="px-4 py-3 font-mono text-slate-400">
+                    <tr
+                      key={p.id}
+                      className={`hover:bg-slate-50 transition-colors ${
+                        isChecked ? 'bg-rose-50/70' : ''
+                      }`}
+                    >
+                      <td className="px-3 py-3 text-center">
+                        {p.status === 'DITOLAK' ? (
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => handleToggleSelectRejected(p)}
+                            title="Centang untuk menghapus data peserta ditolak ini"
+                            className="rounded border-slate-300 text-rose-600 focus:ring-rose-500 cursor-pointer"
+                          />
+                        ) : (
+                          <span
+                            className="inline-block w-4 h-4 rounded border border-slate-200 bg-slate-100 cursor-not-allowed opacity-40"
+                            title="Hanya data berstatus DITOLAK yang dapat dipilih & dihapus"
+                          />
+                        )}
+                      </td>
+                      <td className="px-3 py-3 font-mono text-slate-400">
                         {(currentPage - 1) * rowsPerPage + idx + 1}
                       </td>
                       <td className="px-4 py-3">
@@ -479,7 +670,7 @@ _Panitia Pelaksana ${namaKegiatan}_`;
                           <button
                             title="Audit Lengkap Dokumen & Data"
                             onClick={() => setSelectedPeserta(p)}
-                            className="px-2.5 py-1 text-[11px] font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 rounded-md border border-emerald-200 flex items-center gap-1"
+                            className="px-2.5 py-1 text-[11px] font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 rounded-md border border-emerald-200 flex items-center gap-1 cursor-pointer"
                           >
                             <Eye className="w-3.5 h-3.5" />
                             <span>Periksa</span>
@@ -489,7 +680,7 @@ _Panitia Pelaksana ${namaKegiatan}_`;
                           <button
                             title="Kirim Notifikasi Hasil Verifikasi via WhatsApp"
                             onClick={() => openWaNotification(p)}
-                            className="p-1.5 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-md border border-emerald-300"
+                            className="p-1.5 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-md border border-emerald-300 cursor-pointer"
                           >
                             <MessageCircle className="w-3.5 h-3.5 text-emerald-700" />
                           </button>
@@ -499,7 +690,7 @@ _Panitia Pelaksana ${namaKegiatan}_`;
                             <button
                               title="Sahkan & Verifikasi"
                               onClick={() => openAction(p, 'VERIFIKASI')}
-                              className="p-1.5 text-white bg-emerald-700 hover:bg-emerald-800 rounded-md shadow-2xs"
+                              className="p-1.5 text-white bg-emerald-700 hover:bg-emerald-800 rounded-md shadow-2xs cursor-pointer"
                             >
                               <CheckCircle2 className="w-3.5 h-3.5" />
                             </button>
@@ -509,19 +700,35 @@ _Panitia Pelaksana ${namaKegiatan}_`;
                           <button
                             title="Minta Perbaikan Berkas"
                             onClick={() => openAction(p, 'PERBAIKAN')}
-                            className="p-1.5 text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-md border border-blue-200"
+                            className="p-1.5 text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-md border border-blue-200 cursor-pointer"
                           >
                             <AlertTriangle className="w-3.5 h-3.5" />
                           </button>
 
-                          {/* Reject */}
-                          <button
-                            title="Tolak Peserta"
-                            onClick={() => openAction(p, 'TOLAK')}
-                            className="p-1.5 text-rose-700 bg-rose-50 hover:bg-rose-100 rounded-md border border-rose-200"
-                          >
-                            <XCircle className="w-3.5 h-3.5" />
-                          </button>
+                          {/* Reject OR Delete if already rejected */}
+                          {p.status === 'DITOLAK' ? (
+                            <button
+                              title="Hapus Data Peserta Ditolak Ini"
+                              onClick={() => setConfirmDelete({
+                                isOpen: true,
+                                mode: 'SINGLE',
+                                count: 1,
+                                targetIds: [p.id],
+                                singleName: p.nama,
+                              })}
+                              className="p-1.5 text-rose-700 bg-rose-50 hover:bg-rose-100 rounded-md border border-rose-300 transition-colors cursor-pointer"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          ) : (
+                            <button
+                              title="Tolak Peserta"
+                              onClick={() => openAction(p, 'TOLAK')}
+                              className="p-1.5 text-rose-700 bg-rose-50 hover:bg-rose-100 rounded-md border border-rose-200 cursor-pointer"
+                            >
+                              <XCircle className="w-3.5 h-3.5" />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -678,7 +885,25 @@ _Panitia Pelaksana ${namaKegiatan}_`;
                   </button>
                 </div>
 
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
+                  {selectedPeserta.status === 'DITOLAK' && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setConfirmDelete({
+                          isOpen: true,
+                          mode: 'SINGLE',
+                          count: 1,
+                          targetIds: [selectedPeserta.id],
+                          singleName: selectedPeserta.nama,
+                        });
+                      }}
+                      className="px-3 py-1.5 text-xs font-bold text-white bg-rose-700 hover:bg-rose-800 rounded-lg shadow-xs flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Hapus Peserta Ditolak</span>
+                    </button>
+                  )}
                   <button
                     onClick={() => openAction(selectedPeserta, 'PERBAIKAN')}
                     className="px-3 py-1.5 text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg"
@@ -946,6 +1171,34 @@ _Panitia Pelaksana ${namaKegiatan}_`;
           </div>
         </div>
       )}
+
+      {/* Confirm Delete Modal */}
+      <ConfirmModal
+        isOpen={confirmDelete.isOpen}
+        title={
+          confirmDelete.mode === 'ALL_DITOLAK'
+            ? 'Konfirmasi Hapus Total Peserta Ditolak'
+            : confirmDelete.mode === 'SELECTED'
+            ? 'Konfirmasi Hapus Peserta Terpilih'
+            : 'Konfirmasi Hapus Peserta Ditolak'
+        }
+        message={
+          confirmDelete.mode === 'ALL_DITOLAK'
+            ? `Apakah Anda yakin ingin menghapus TOTAL seluruh data peserta yang berstatus DITOLAK (${confirmDelete.count} peserta)? Data peserta yang berstatus TERVERIFIKASI, MENUNGGU VERIFIKASI, dan PERLU PERBAIKAN dipastikan tetap aman dan tidak terhapus.`
+            : confirmDelete.mode === 'SELECTED'
+            ? `Apakah Anda yakin ingin menghapus permanen ${confirmDelete.count} data peserta berstatus DITOLAK yang telah dicentang?`
+            : `Hapus permanen data peserta "${confirmDelete.singleName}" yang berstatus DITOLAK dari database?`
+        }
+        confirmLabel={
+          confirmDelete.mode === 'ALL_DITOLAK'
+            ? `Ya, Hapus Total (${confirmDelete.count})`
+            : `Ya, Hapus Data (${confirmDelete.count})`
+        }
+        cancelLabel="Batal"
+        confirmVariant="danger"
+        onConfirm={handleExecuteDelete}
+        onCancel={() => setConfirmDelete({ isOpen: false, mode: 'SINGLE', count: 0, targetIds: [] })}
+      />
     </div>
   );
 };

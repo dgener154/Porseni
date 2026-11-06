@@ -18,7 +18,10 @@ import {
   Eye,
   Play,
   ExternalLink,
+  Download,
+  FileText,
 } from 'lucide-react';
+import { downloadAnnouncementAttachment } from '../../services/announcementDownload';
 
 interface AdminKegiatanProps {
   onRefresh: () => void;
@@ -229,6 +232,7 @@ export const AdminKegiatan: React.FC<AdminKegiatanProps> = ({
     isi: '',
     kategori: 'PENTING' as 'PENTING' | 'UMUM' | 'JADWAL' | 'HASIL',
     lampiranNama: '',
+    lampiranUrl: '',
     status: 'PUBLISHED' as 'PUBLISHED' | 'DRAFT',
     isNew: true,
   });
@@ -302,6 +306,7 @@ export const AdminKegiatan: React.FC<AdminKegiatanProps> = ({
                     isi: '',
                     kategori: 'PENTING',
                     lampiranNama: '',
+                    lampiranUrl: '',
                     status: 'PUBLISHED',
                     isNew: true,
                   });
@@ -503,9 +508,20 @@ export const AdminKegiatan: React.FC<AdminKegiatanProps> = ({
                 </p>
 
                 {a.lampiranNama && (
-                  <div className="p-2 bg-slate-50 rounded border border-slate-200 text-[11px] text-slate-700 flex items-center gap-1.5">
-                    <BookOpen className="w-3.5 h-3.5 text-emerald-700" />
-                    <span>Lampiran: {a.lampiranNama}</span>
+                  <div className="p-2.5 bg-emerald-50/70 rounded-lg border border-emerald-200 text-[11px] text-emerald-950 flex items-center justify-between gap-2 mt-2">
+                    <div className="flex items-center gap-1.5 truncate">
+                      <FileText className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                      <span className="font-semibold truncate">{a.lampiranNama}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => downloadAnnouncementAttachment(a)}
+                      className="px-2.5 py-1 bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-[10px] rounded flex items-center gap-1 shrink-0 transition-colors shadow-2xs cursor-pointer"
+                      title="Unduh berkas lampiran ini"
+                    >
+                      <Download className="w-3 h-3" />
+                      <span>Unduh</span>
+                    </button>
                   </div>
                 )}
               </div>
@@ -519,6 +535,7 @@ export const AdminKegiatan: React.FC<AdminKegiatanProps> = ({
                       isi: a.isi,
                       kategori: a.kategori,
                       lampiranNama: a.lampiranNama || '',
+                      lampiranUrl: a.lampiranUrl || '',
                       status: a.status,
                       isNew: a.isNew,
                     });
@@ -865,15 +882,74 @@ export const AdminKegiatan: React.FC<AdminKegiatanProps> = ({
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg"
                 />
               </div>
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Nama Berkas Lampiran (Opsional)</label>
-                <input
-                  type="text"
-                  value={annForm.lampiranNama}
-                  onChange={e => setAnnForm({ ...annForm, lampiranNama: e.target.value })}
-                  placeholder="Contoh: Juknis_Lomba_Futsal.pdf"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg"
-                />
+              <div className="space-y-2 p-3 bg-slate-50 rounded-xl border border-slate-200">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    Unggah Berkas Lampiran (PDF / Word / Excel / Gambar)
+                  </label>
+                  <input
+                    type="file"
+                    accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg"
+                    onChange={e => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        if (file.size > 5 * 1024 * 1024) {
+                          onShowToast('error', 'Ukuran berkas maksimal 5 MB.');
+                          return;
+                        }
+                        const reader = new FileReader();
+                        reader.onload = (event) => {
+                          const dataUrl = event.target?.result as string;
+                          setAnnForm(prev => ({
+                            ...prev,
+                            lampiranNama: file.name,
+                            lampiranUrl: dataUrl,
+                          }));
+                          onShowToast('success', `Berkas "${file.name}" berhasil dimuat!`);
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                    }}
+                    className="w-full text-xs text-slate-600 file:mr-2.5 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-emerald-700 file:text-white hover:file:bg-emerald-800 cursor-pointer"
+                  />
+                  <p className="text-[10px] text-slate-500 mt-1">
+                    Format: PDF, Word (.doc/.docx), Excel (.xlsx), atau Gambar (Maks. 5 MB)
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-slate-600 mb-0.5 text-[11px]">
+                    Nama Label Berkas (Dapat Diedit)
+                  </label>
+                  <input
+                    type="text"
+                    value={annForm.lampiranNama}
+                    onChange={e => setAnnForm({ ...annForm, lampiranNama: e.target.value })}
+                    placeholder="Contoh: Juknis_Porseni_2026.pdf"
+                    className="w-full px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs"
+                  />
+                </div>
+
+                {annForm.lampiranNama && (
+                  <div className="flex items-center justify-between bg-emerald-50 text-emerald-900 border border-emerald-200 px-2.5 py-1.5 rounded-lg text-xs">
+                    <div className="flex items-center gap-1.5 truncate">
+                      <FileText className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                      <span className="font-semibold truncate">{annForm.lampiranNama}</span>
+                      {annForm.lampiranUrl?.startsWith('data:') && (
+                        <span className="text-[10px] bg-emerald-200 text-emerald-800 px-1.5 py-0.2 rounded font-bold">
+                          File Siap
+                        </span>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setAnnForm(prev => ({ ...prev, lampiranNama: '', lampiranUrl: '' }))}
+                      className="text-rose-600 hover:text-rose-800 font-bold text-[11px] ml-2 shrink-0"
+                    >
+                      Hapus Berkas
+                    </button>
+                  </div>
+                )}
               </div>
               <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
                 <button

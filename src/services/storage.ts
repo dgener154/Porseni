@@ -668,6 +668,14 @@ export class StorageService {
     this.notifyCloudSync('delete', 'peserta', id);
   }
 
+  public static deleteMultiplePeserta(ids: string[]): void {
+    if (!ids || ids.length === 0) return;
+    const idSet = new Set(ids);
+    const list = this.getPeserta().filter(p => !idSet.has(p.id));
+    this.setItems(STORAGE_KEYS.PESERTA, list);
+    ids.forEach(id => this.notifyCloudSync('delete', 'peserta', id));
+  }
+
   // --- PENGUMUMAN ---
   public static getPengumuman(): Pengumuman[] {
     return this.getItems<Pengumuman>(STORAGE_KEYS.PENGUMUMAN);
