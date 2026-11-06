@@ -22,6 +22,7 @@ import {
   VideoKegiatan,
   PengaturanSistem,
   User,
+  ResetDatabaseOptions,
 } from '../types';
 
 // Initialize Firebase App
@@ -173,6 +174,61 @@ export async function deleteDocFromFirestore(
       return;
     }
     console.warn(`[Firestore deleteDoc fail] ${collectionName}/${docId}:`, error);
+  }
+}
+
+/**
+ * Clear selected collections from Cloud Firestore when requested by admin
+ */
+export async function clearSelectedCloudCollections(
+  options: ResetDatabaseOptions
+): Promise<{ success: boolean; cleared: string[] }> {
+  if (_isQuotaExceeded) {
+    return { success: false, cleared: [] };
+  }
+  const cleared: string[] = [];
+  try {
+    const list: { key: keyof ResetDatabaseOptions; coll: string }[] = [
+      { key: 'peserta', coll: 'peserta' },
+      { key: 'lembaga', coll: 'lembaga' },
+      { key: 'foto', coll: 'foto_kegiatan' },
+      { key: 'video', coll: 'video_kegiatan' },
+      { key: 'pengumuman', coll: 'pengumuman' },
+      { key: 'jadwal', coll: 'jadwal' },
+      { key: 'cabang', coll: 'cabang' },
+      { key: 'users', coll: 'users' },
+    ];
+
+    for (const item of list) {
+      if (options[item.key]) {
+        const snap = await getDocs(collection(db, item.coll));
+        for (const d of snap.docs) {
+          if (item.coll === 'users' && (d.id === 'USR-ADMIN-01' || d.data().role === 'ADMIN')) {
+            continue; // Keep admin account
+          }
+          await deleteDoc(doc(db, item.coll, d.id));
+        }
+        cleared.push(item.coll);
+      }
+    }
+
+    if (options.pengaturan) {
+      const defaultSettings = StorageService.getPengaturan();
+      await setDoc(doc(db, 'pengaturan', 'global'), defaultSettings, { merge: true });
+      cleared.push('pengaturan');
+    }
+
+    return { success: true, cleared };
+  } catch (error: any) {
+    if (
+      error?.code === 'resource-exhausted' ||
+      String(error?.message).includes('Quota limit exceeded') ||
+      String(error?.message).includes('Quota exceeded')
+    ) {
+      _isQuotaExceeded = true;
+    }
+    console.warn('[clearSelectedCloudCollections notice]:', error?.message || error);
+    return { success: false, cleared };
   }
 }
 

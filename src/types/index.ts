@@ -249,3 +249,29 @@ export interface ToastMessage {
   message: string;
   timestamp: number;
 }
+
+export interface ResetDatabaseOptions {
+  peserta?: boolean;
+  lembaga?: boolean;
+  foto?: boolean;
+  video?: boolean;
+  pengumuman?: boolean;
+  jadwal?: boolean;
+  cabang?: boolean;
+  users?: boolean;
+  auditLogs?: boolean;
+  pengaturan?: boolean;
+}
+
+export interface DatabaseCounts {
+  peserta: number;
+  lembaga: number;
+  foto: number;
+  video: number;
+  pengumuman: number;
+  jadwal: number;
+  cabang: number;
+  users: number;
+  auditLogs: number;
+  pengaturan: number;
+}

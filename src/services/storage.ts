@@ -10,6 +10,8 @@ import {
   Periode,
   Peserta,
   User,
+  ResetDatabaseOptions,
+  DatabaseCounts,
 } from '../types';
 
 const STORAGE_KEYS = {
@@ -880,6 +882,143 @@ export class StorageService {
     } catch (e: any) {
       return { success: false, message: 'Gagal memproses file: ' + (e.message || 'JSON tidak valid') };
     }
+  }
+
+  // Get current record counts for database management & reset control
+  public static getDatabaseCounts(): DatabaseCounts {
+    const operatorUsers = this.getUsers().filter(u => u.role === 'LEMBAGA');
+    return {
+      peserta: this.getPeserta().length,
+      lembaga: this.getLembaga().length,
+      foto: this.getFotoKegiatan().length,
+      video: this.getVideoKegiatan().length,
+      pengumuman: this.getPengumuman().length,
+      jadwal: this.getJadwal().length,
+      cabang: this.getCabang().length,
+      users: operatorUsers.length,
+      auditLogs: this.getAuditLogs().length,
+      pengaturan: 1,
+    };
+  }
+
+  // Granular database reset with checkbox system & safety preservation of admin
+  public static resetSelectedDatabase(
+    options: ResetDatabaseOptions,
+    actor = 'admin'
+  ): { success: boolean; clearedCategories: string[]; counts: DatabaseCounts } {
+    const cleared: string[] = [];
+
+    // 1. Peserta
+    if (options.peserta) {
+      this.setItems(STORAGE_KEYS.PESERTA, []);
+      cleared.push('Data Peserta');
+    }
+
+    // 2. Lembaga
+    if (options.lembaga) {
+      this.setItems(STORAGE_KEYS.LEMBAGA, []);
+      cleared.push('Data Lembaga/Kontingen');
+    }
+
+    // 3. Foto Kegiatan
+    if (options.foto) {
+      this.setItems(STORAGE_KEYS.FOTO_KEGIATAN, []);
+      cleared.push('Galeri Foto');
+      try {
+        window.dispatchEvent(new CustomEvent('porseni_foto_updated'));
+      } catch {
+        // ignore
+      }
+    }
+
+    // 4. Video Kegiatan
+    if (options.video) {
+      this.setItems(STORAGE_KEYS.VIDEO_KEGIATAN, []);
+      cleared.push('Galeri Video');
+      try {
+        window.dispatchEvent(new CustomEvent('porseni_video_updated'));
+      } catch {
+        // ignore
+      }
+    }
+
+    // 5. Pengumuman
+    if (options.pengumuman) {
+      this.setItems(STORAGE_KEYS.PENGUMUMAN, []);
+      cleared.push('Pengumuman');
+    }
+
+    // 6. Jadwal
+    if (options.jadwal) {
+      this.setItems(STORAGE_KEYS.JADWAL, []);
+      cleared.push('Jadwal Kegiatan');
+    }
+
+    // 7. Master Cabang Lomba
+    if (options.cabang) {
+      this.setItems(STORAGE_KEYS.CABANG, []);
+      cleared.push('Master Cabang Lomba');
+    }
+
+    // 8. Akun Operator Lembaga (Always preserve ADMIN role so login is never lost!)
+    if (options.users) {
+      const allUsers = this.getUsers();
+      const adminUsers = allUsers.filter(u => u.role === 'ADMIN');
+      if (adminUsers.length === 0) {
+        adminUsers.push({
+          id: 'USR-ADMIN-01',
+          username: 'admin',
+          email: 'admin@porseni.go.id',
+          passwordHash: '',
+          role: 'ADMIN',
+          namaLengkap: 'Administrator Panitia Pelaksana PORSENI',
+          createdAt: new Date().toISOString(),
+        });
+      }
+      this.setItems(STORAGE_KEYS.USERS, adminUsers);
+      cleared.push('Akun Operator Lembaga');
+    }
+
+    // 9. Pengaturan & Identitas Sistem
+    if (options.pengaturan) {
+      const current = this.getPengaturan();
+      this.savePengaturan({
+        ...defaultPengaturan,
+        // preserve spreadsheet and cloud keys if already configured
+        spreadsheetId: current.spreadsheetId,
+        autoSyncCloud: current.autoSyncCloud,
+      }, true);
+      cleared.push('Pengaturan Sistem');
+    }
+
+    // 10. Audit Logs
+    if (options.auditLogs) {
+      this.setItems(STORAGE_KEYS.AUDIT_LOGS, []);
+      cleared.push('Log Audit');
+    }
+
+    // Record audit trail of the reset action
+    this.addAuditLog({
+      user: actor,
+      role: 'ADMIN',
+      aktivitas: 'Reset Database Sistem',
+      rincian: `Berhasil mereset data: ${cleared.join(', ')}`,
+      ip: '127.0.0.1',
+      status: 'SUKSES',
+    });
+
+    try {
+      window.dispatchEvent(new CustomEvent('porseni_pengaturan_updated', { detail: this.getPengaturan() }));
+      window.dispatchEvent(new CustomEvent('porseni_cloud_synced'));
+    } catch {
+      // ignore
+    }
+
+    return {
+      success: true,
+      clearedCategories: cleared,
+      counts: this.getDatabaseCounts(),
+    };
   }
 
   // Reset to factory defaults
