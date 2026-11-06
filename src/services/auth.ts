@@ -36,6 +36,13 @@ export class AuthService {
         return null;
       }
 
+      // If user was deleted or no longer exists in users repository (e.g. dummy account wiped)
+      const users = StorageService.getUsers();
+      if (users.length > 0 && !users.some(u => u.id === session.user.id || u.username === session.user.username || u.email === session.user.email)) {
+        localStorage.removeItem(SESSION_KEY);
+        return null;
+      }
+
       return session;
     } catch {
       return null;
@@ -75,8 +82,8 @@ export class AuthService {
     const inputHash = await hashPassword(passwordPlain);
     const isDefaultMatch =
       user.passwordHash === inputHash ||
-      (user.role === 'LEMBAGA' && (passwordPlain === '123456' || passwordPlain === 'password123')) ||
-      (user.role === 'ADMIN' && passwordPlain === 'admin123');
+      (user.role === 'ADMIN' && passwordPlain === 'mkkmmtssby@2020') ||
+      (user.role === 'LEMBAGA' && (passwordPlain === '123456' || passwordPlain === 'password123'));
 
     if (!isDefaultMatch) {
       StorageService.addAuditLog({

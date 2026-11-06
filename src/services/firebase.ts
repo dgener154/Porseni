@@ -75,6 +75,11 @@ export function isCloudOnline(): boolean {
   return _isCloudOnline;
 }
 
+let _isQuotaExceeded = false;
+export function isQuotaExceeded(): boolean {
+  return _isQuotaExceeded;
+}
+
 // Test connection on boot as mandated by the skill
 export async function testFirebaseConnection(): Promise<boolean> {
   try {
@@ -85,7 +90,16 @@ export async function testFirebaseConnection(): Promise<boolean> {
       window.dispatchEvent(new CustomEvent('porseni_connection_status', { detail: { online: true } }));
     }
     return true;
-  } catch (error) {
+  } catch (error: any) {
+    if (
+      error?.code === 'resource-exhausted' ||
+      String(error?.message).includes('Quota limit exceeded') ||
+      String(error?.message).includes('Quota exceeded')
+    ) {
+      _isQuotaExceeded = true;
+      console.warn('[Firebase] Kuota harian database cloud tercapai. Aplikasi beralih ke mode offline lokal.');
+      return false;
+    }
     if (error instanceof Error && error.message.includes('the client is offline')) {
       _isCloudOnline = false;
       console.warn('[Firebase] Client is offline or database initializing.');
@@ -108,20 +122,29 @@ testFirebaseConnection();
 
 /**
  * Push an individual document to Firestore immediately in the background
- * This ensures that as soon as any device adds/edits a Peserta, Lembaga, Cabang, etc.,
- * it is sent straight to Firestore without waiting for a manual full sync.
+ * If write quota is reached, gracefully pauses cloud writes and preserves local data.
  */
 export async function syncDocToFirestore(
   collectionName: string,
   docId: string,
   data: any
 ): Promise<void> {
+  if (_isQuotaExceeded) return;
   try {
     if (!docId) return;
     const cleanDocId = String(docId).replace(/\//g, '_');
     await setDoc(doc(db, collectionName, cleanDocId), data, { merge: true });
     _isCloudOnline = true;
-  } catch (error) {
+  } catch (error: any) {
+    if (
+      error?.code === 'resource-exhausted' ||
+      String(error?.message).includes('Quota limit exceeded') ||
+      String(error?.message).includes('Quota exceeded')
+    ) {
+      _isQuotaExceeded = true;
+      console.warn('[Firebase] Kuota harian penulisan database cloud tercapai. Sinkronisasi background dijeda; penyimpanan lokal tetap aktif normal.');
+      return;
+    }
     console.warn(`[Firestore syncDoc fail] ${collectionName}/${docId}:`, error);
   }
 }
@@ -133,12 +156,22 @@ export async function deleteDocFromFirestore(
   collectionName: string,
   docId: string
 ): Promise<void> {
+  if (_isQuotaExceeded) return;
   try {
     if (!docId) return;
     const cleanDocId = String(docId).replace(/\//g, '_');
     await deleteDoc(doc(db, collectionName, cleanDocId));
     _isCloudOnline = true;
-  } catch (error) {
+  } catch (error: any) {
+    if (
+      error?.code === 'resource-exhausted' ||
+      String(error?.message).includes('Quota limit exceeded') ||
+      String(error?.message).includes('Quota exceeded')
+    ) {
+      _isQuotaExceeded = true;
+      console.warn('[Firebase] Kuota harian penulisan database cloud tercapai. Sinkronisasi background dijeda; penyimpanan lokal tetap aktif normal.');
+      return;
+    }
     console.warn(`[Firestore deleteDoc fail] ${collectionName}/${docId}:`, error);
   }
 }
@@ -151,6 +184,14 @@ export async function uploadAllToFirestore(): Promise<{
   message: string;
   counts: { lembaga: number; peserta: number; cabang: number };
 }> {
+  if (_isQuotaExceeded) {
+    return {
+      success: false,
+      message: 'Batas kuota harian penulisan database cloud (free tier) telah tercapai. Data Anda tetap tersimpan aman di penyimpanan lokal.',
+      counts: { lembaga: 0, peserta: 0, cabang: 0 },
+    };
+  }
+
   try {
     const lembagaList = StorageService.getLembaga();
     const pesertaList = StorageService.getPeserta();
@@ -210,7 +251,7 @@ export async function uploadAllToFirestore(): Promise<{
       ...settings,
       lastSyncCloud: new Date().toISOString(),
     };
-    StorageService.savePengaturan(updatedSettings);
+    StorageService.savePengaturan(updatedSettings, true);
 
     _isCloudOnline = true;
     if (typeof window !== 'undefined') {
@@ -226,7 +267,19 @@ export async function uploadAllToFirestore(): Promise<{
         cabang: cabangList.length,
       },
     };
-  } catch (error) {
+  } catch (error: any) {
+    if (
+      error?.code === 'resource-exhausted' ||
+      String(error?.message).includes('Quota limit exceeded') ||
+      String(error?.message).includes('Quota exceeded')
+    ) {
+      _isQuotaExceeded = true;
+      return {
+        success: false,
+        message: 'Batas kuota harian penulisan database cloud (free tier) telah tercapai. Data Anda tetap tersimpan aman di penyimpanan lokal.',
+        counts: { lembaga: 0, peserta: 0, cabang: 0 },
+      };
+    }
     console.error('Upload to Firestore error:', error);
     return {
       success: false,
@@ -238,8 +291,6 @@ export async function uploadAllToFirestore(): Promise<{
 
 /**
  * Download all records from Firebase Firestore to local storage (Pull from Cloud).
- * If Cloud Firestore has zero records (e.g. freshly created database), automatically
- * seeds Firestore from local initial storage so cloud data is immediately available to all devices!
  */
 export async function downloadAllFromFirestore(): Promise<{
   success: boolean;
@@ -247,18 +298,30 @@ export async function downloadAllFromFirestore(): Promise<{
   counts: { lembaga: number; peserta: number; cabang: number };
 }> {
   try {
+    const DUMMY_IDS = new Set([
+      'PS-2026-00001', 'PS-2026-00002', 'PS-2026-00003', 'PS-2026-00004',
+      'LG-2026-00001', 'LG-2026-00002', 'LG-2026-00003',
+      'USR-OP-01', 'USR-OP-02', 'USR-OP-03',
+      'FTO-001', 'FTO-002', 'FTO-003', 'FTO-004', 'FTO-005', 'FTO-006',
+      'VID-001', 'VID-002', 'VID-003', 'VID-004', 'VID-005', 'VID-006',
+    ]);
+
     // 1. Fetch Lembaga
     const lembagaSnap = await getDocs(collection(db, 'lembaga'));
     const lembagaList: Lembaga[] = [];
     lembagaSnap.forEach(d => {
-      lembagaList.push(d.data() as Lembaga);
+      if (!DUMMY_IDS.has(d.id)) {
+        lembagaList.push(d.data() as Lembaga);
+      }
     });
 
     // 2. Fetch Peserta
     const pesertaSnap = await getDocs(collection(db, 'peserta'));
     const pesertaList: Peserta[] = [];
     pesertaSnap.forEach(d => {
-      pesertaList.push(d.data() as Peserta);
+      if (!DUMMY_IDS.has(d.id)) {
+        pesertaList.push(d.data() as Peserta);
+      }
     });
 
     // 3. Fetch Cabang
@@ -295,46 +358,32 @@ export async function downloadAllFromFirestore(): Promise<{
     const fotoSnap = await getDocs(collection(db, 'foto_kegiatan'));
     const fotoList: FotoKegiatan[] = [];
     fotoSnap.forEach(d => {
-      fotoList.push(d.data() as FotoKegiatan);
+      if (!DUMMY_IDS.has(d.id)) {
+        fotoList.push(d.data() as FotoKegiatan);
+      }
     });
 
     // 8. Fetch Video
     const videoSnap = await getDocs(collection(db, 'video_kegiatan'));
     const videoList: VideoKegiatan[] = [];
     videoSnap.forEach(d => {
-      videoList.push(d.data() as VideoKegiatan);
+      if (!DUMMY_IDS.has(d.id)) {
+        videoList.push(d.data() as VideoKegiatan);
+      }
     });
 
     // 9. Fetch Users
     const usersSnap = await getDocs(collection(db, 'users'));
     const usersList: User[] = [];
     usersSnap.forEach(d => {
-      usersList.push(d.data() as User);
+      if (!DUMMY_IDS.has(d.id)) {
+        usersList.push(d.data() as User);
+      }
     });
 
-    // CHECK SEED CONDITION:
-    // If Cloud is currently empty, seed Cloud with local baseline so other devices immediately see the data!
-    if (lembagaList.length === 0 && pesertaList.length === 0) {
-      console.log('[Firebase] Cloud database is empty, bootstrapping from local records...');
-      await uploadAllToFirestore();
-      return {
-        success: true,
-        message: 'Database Cloud berhasil diinisialisasi dan siap digunakan secara online!',
-        counts: {
-          lembaga: StorageService.getLembaga().length,
-          peserta: StorageService.getPeserta().length,
-          cabang: StorageService.getCabang().length,
-        },
-      };
-    }
-
     // Save fetched cloud records into local cache
-    if (lembagaList.length > 0) {
-      StorageService.setItems('porseni_lembaga_v1', lembagaList);
-    }
-    if (pesertaList.length > 0) {
-      StorageService.setItems('porseni_peserta_v1', pesertaList);
-    }
+    StorageService.setItems('porseni_lembaga_v1', lembagaList);
+    StorageService.setItems('porseni_peserta_v1', pesertaList);
     if (cabangList.length > 0) {
       StorageService.setItems('porseni_cabang_v1', cabangList);
     }
@@ -344,14 +393,16 @@ export async function downloadAllFromFirestore(): Promise<{
     if (jadwalList.length > 0) {
       StorageService.setItems('porseni_jadwal_v1', jadwalList);
     }
-    if (fotoList.length > 0) {
-      StorageService.setItems('porseni_foto_kegiatan_v1', fotoList);
-    }
-    if (videoList.length > 0) {
-      StorageService.setItems('porseni_video_kegiatan_v1', videoList);
-    }
+    StorageService.setItems('porseni_foto_kegiatan_v1', fotoList);
+    StorageService.setItems('porseni_video_kegiatan_v1', videoList);
     if (usersList.length > 0) {
-      StorageService.setItems('porseni_users_v1', usersList);
+      const safeUsers = usersList.map(u => {
+        if (u.role === 'ADMIN' && (u.username === 'admin' || u.email === 'admin@porseni.go.id')) {
+          return { ...u, email: 'admin@porseni.go.id' };
+        }
+        return u;
+      });
+      StorageService.setItems('porseni_users_v1', safeUsers);
     }
     if (cloudSettings) {
       const activeSettings = StorageService.getPengaturan();
@@ -359,7 +410,7 @@ export async function downloadAllFromFirestore(): Promise<{
         ...activeSettings,
         ...(cloudSettings as Record<string, any>),
         lastSyncCloud: new Date().toISOString(),
-      });
+      }, true); // skipCloudSync = true
     }
 
     _isCloudOnline = true;
@@ -380,8 +431,15 @@ export async function downloadAllFromFirestore(): Promise<{
         cabang: cabangList.length,
       },
     };
-  } catch (error) {
-    console.error('Download from Firestore error:', error);
+  } catch (error: any) {
+    if (
+      error?.code === 'resource-exhausted' ||
+      String(error?.message).includes('Quota limit exceeded') ||
+      String(error?.message).includes('Quota exceeded')
+    ) {
+      _isQuotaExceeded = true;
+    }
+    console.warn('Download from Firestore notice:', (error as Error).message);
     return {
       success: false,
       message: `Gagal menarik data dari cloud: ${(error as Error).message}`,
@@ -399,6 +457,17 @@ export function setupRealtimeSync(onUpdate: () => void): () => void {
   const unsubs: (() => void)[] = [];
 
   try {
+    const handleListenerError = (name: string, err: any) => {
+      if (
+        err?.code === 'resource-exhausted' ||
+        String(err?.message).includes('Quota limit exceeded') ||
+        String(err?.message).includes('Quota exceeded')
+      ) {
+        _isQuotaExceeded = true;
+      }
+      console.warn(`[Firestore Realtime] ${name} notice:`, err?.message || err);
+    };
+
     // 1. Peserta listener
     const unsubPeserta = onSnapshot(collection(db, 'peserta'), snap => {
       if (!snap.empty) {
@@ -407,9 +476,7 @@ export function setupRealtimeSync(onUpdate: () => void): () => void {
         StorageService.setItems('porseni_peserta_v1', list);
         onUpdate();
       }
-    }, err => {
-      console.warn('Realtime Peserta listener error:', err);
-    });
+    }, err => handleListenerError('Peserta', err));
     unsubs.push(unsubPeserta);
 
     // 2. Lembaga listener
@@ -420,9 +487,7 @@ export function setupRealtimeSync(onUpdate: () => void): () => void {
         StorageService.setItems('porseni_lembaga_v1', list);
         onUpdate();
       }
-    }, err => {
-      console.warn('Realtime Lembaga listener error:', err);
-    });
+    }, err => handleListenerError('Lembaga', err));
     unsubs.push(unsubLembaga);
 
     // 3. Cabang Lomba listener
@@ -433,9 +498,7 @@ export function setupRealtimeSync(onUpdate: () => void): () => void {
         StorageService.setItems('porseni_cabang_v1', list);
         onUpdate();
       }
-    }, err => {
-      console.warn('Realtime Cabang listener error:', err);
-    });
+    }, err => handleListenerError('Cabang', err));
     unsubs.push(unsubCabang);
 
     // 4. Pengaturan Sistem listener
@@ -447,13 +510,11 @@ export function setupRealtimeSync(onUpdate: () => void): () => void {
           StorageService.savePengaturan({
             ...currentConfig,
             ...cloudConfig,
-          });
+          }, true); // skipCloudSync = true to prevent recursive write loop
           onUpdate();
         }
       });
-    }, err => {
-      console.warn('Realtime Pengaturan listener error:', err);
-    });
+    }, err => handleListenerError('Pengaturan', err));
     unsubs.push(unsubPengaturan);
 
     // 5. Pengumuman listener
@@ -464,9 +525,7 @@ export function setupRealtimeSync(onUpdate: () => void): () => void {
         StorageService.setItems('porseni_pengumuman_v1', list);
         onUpdate();
       }
-    }, err => {
-      console.warn('Realtime Pengumuman listener error:', err);
-    });
+    }, err => handleListenerError('Pengumuman', err));
     unsubs.push(unsubPengumuman);
 
     // 6. Jadwal Kegiatan listener
@@ -477,9 +536,7 @@ export function setupRealtimeSync(onUpdate: () => void): () => void {
         StorageService.setItems('porseni_jadwal_v1', list);
         onUpdate();
       }
-    }, err => {
-      console.warn('Realtime Jadwal listener error:', err);
-    });
+    }, err => handleListenerError('Jadwal', err));
     unsubs.push(unsubJadwal);
 
     // 7. Foto Kegiatan listener
@@ -493,9 +550,7 @@ export function setupRealtimeSync(onUpdate: () => void): () => void {
           window.dispatchEvent(new CustomEvent('porseni_foto_updated'));
         }
       }
-    }, err => {
-      console.warn('Realtime Foto listener error:', err);
-    });
+    }, err => handleListenerError('Foto', err));
     unsubs.push(unsubFoto);
 
     // 8. Video Kegiatan listener
@@ -509,9 +564,7 @@ export function setupRealtimeSync(onUpdate: () => void): () => void {
           window.dispatchEvent(new CustomEvent('porseni_video_updated'));
         }
       }
-    }, err => {
-      console.warn('Realtime Video listener error:', err);
-    });
+    }, err => handleListenerError('Video', err));
     unsubs.push(unsubVideo);
 
     _isCloudOnline = true;

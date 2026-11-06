@@ -151,8 +151,8 @@ export const AdminBackup: React.FC<AdminBackupProps> = ({
               Kembalikan ke Setelan Awal Pabrik (Factory Reset)
             </h3>
             <p className="text-xs text-rose-700/80 leading-relaxed max-w-2xl">
-              Mengosongkan perubahan lokal dan memulihkan data demo awal resmi PORSENI 2026.
-              Gunakan fungsi ini hanya bila Anda ingin memulai kembali simulasi dari nol.
+              Mengosongkan seluruh data operasional dan mengembalikan konfigurasi sistem ke kondisi awal bersih resmi siap pakai.
+              Gunakan fungsi ini hanya bila Anda ingin mengosongkan sistem kembali ke setelan pabrik.
             </p>
             <div className="pt-2">
               <button
@@ -160,7 +160,7 @@ export const AdminBackup: React.FC<AdminBackupProps> = ({
                 className="px-4 py-2 text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg transition-colors flex items-center gap-1.5"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
-                <span>Reset ke Data Awal Demo</span>
+                <span>Reset ke Setelan Bersih Awal</span>
               </button>
             </div>
           </div>

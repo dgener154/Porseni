@@ -109,7 +109,7 @@ export const LupaPassword: React.FC<LupaPasswordProps> = ({ onBackToLogin, onSuc
                     required
                     value={email}
                     onChange={e => setEmail(e.target.value)}
-                    placeholder="nama@lembaga.sch.id atau admin@porseni.go.id"
+                    placeholder="Masukkan alamat email terdaftar..."
                     className="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-600"
                   />
                 </div>

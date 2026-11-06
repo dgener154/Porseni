@@ -628,63 +628,75 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </button>
           </div>
 
-          {/* 6 Photos Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {summaryPhotos.map(foto => {
-              const badgeColors = {
-                PEMBUKAAN: 'bg-emerald-600 text-white',
-                OLAHRAGA: 'bg-blue-600 text-white',
-                SENI: 'bg-purple-600 text-white',
-                JUARA: 'bg-amber-500 text-slate-950 font-black',
-                DOKUMENTASI: 'bg-slate-700 text-white',
-              }[foto.kategori] || 'bg-emerald-700 text-white';
+          {/* Photos Grid or Clean Empty State */}
+          {summaryPhotos.length === 0 ? (
+            <div className="py-12 px-4 bg-slate-50/70 rounded-2xl border-2 border-dashed border-slate-200 text-center space-y-2">
+              <div className="w-12 h-12 rounded-full bg-emerald-50 text-emerald-700 flex items-center justify-center mx-auto">
+                <ImageIcon className="w-6 h-6" />
+              </div>
+              <p className="text-xs font-bold text-slate-800">Belum Ada Dokumentasi Foto Kegiatan</p>
+              <p className="text-[11px] text-slate-500 max-w-md mx-auto">
+                Dokumentasi foto kegiatan PORSENI {settings.tahun} akan dipublikasikan oleh Panitia Pelaksana secara berkala di portal ini.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {summaryPhotos.map(foto => {
+                const badgeColors = {
+                  PEMBUKAAN: 'bg-emerald-600 text-white',
+                  OLAHRAGA: 'bg-blue-600 text-white',
+                  SENI: 'bg-purple-600 text-white',
+                  JUARA: 'bg-amber-500 text-slate-950 font-black',
+                  DOKUMENTASI: 'bg-slate-700 text-white',
+                }[foto.kategori] || 'bg-emerald-700 text-white';
 
-              return (
-                <div
-                  key={foto.id}
-                  className="bg-white rounded-2xl border-2 border-slate-200 shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden flex flex-col justify-between group"
-                >
-                  <div className="relative aspect-video overflow-hidden bg-slate-900 cursor-pointer" onClick={() => setPreviewPhoto(foto)}>
-                    <img
-                      src={foto.imageUrl}
-                      alt={foto.judul}
-                      referrerPolicy="no-referrer"
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    />
-                    <div className="absolute top-3 left-3">
-                      <span className={`px-2.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider shadow-xs ${badgeColors}`}>
-                        {foto.kategori}
-                      </span>
+                return (
+                  <div
+                    key={foto.id}
+                    className="bg-white rounded-2xl border-2 border-slate-200 shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden flex flex-col justify-between group"
+                  >
+                    <div className="relative aspect-video overflow-hidden bg-slate-900 cursor-pointer" onClick={() => setPreviewPhoto(foto)}>
+                      <img
+                        src={foto.imageUrl}
+                        alt={foto.judul}
+                        referrerPolicy="no-referrer"
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                      <div className="absolute top-3 left-3">
+                        <span className={`px-2.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider shadow-xs ${badgeColors}`}>
+                          {foto.kategori}
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => setPreviewPhoto(foto)}
+                        className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white gap-1.5 text-xs font-bold"
+                      >
+                        <Eye className="w-4 h-4" />
+                        <span>Lihat Ukuran Penuh</span>
+                      </button>
                     </div>
-                    <button
-                      onClick={() => setPreviewPhoto(foto)}
-                      className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white gap-1.5 text-xs font-bold"
-                    >
-                      <Eye className="w-4 h-4" />
-                      <span>Lihat Ukuran Penuh</span>
-                    </button>
-                  </div>
 
-                  <div className="p-4 space-y-1.5">
-                    <div className="flex items-center justify-between text-[10px] text-slate-400 font-mono">
-                      <span>{foto.tanggal}</span>
-                      <span>PORSENI {settings.tahun}</span>
+                    <div className="p-4 space-y-1.5">
+                      <div className="flex items-center justify-between text-[10px] text-slate-400 font-mono">
+                        <span>{foto.tanggal}</span>
+                        <span>PORSENI {settings.tahun}</span>
+                      </div>
+
+                      <h3 className="text-sm font-bold text-slate-900 group-hover:text-emerald-800 transition-colors line-clamp-1">
+                        {foto.judul}
+                      </h3>
+
+                      {foto.deskripsi && (
+                        <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">
+                          {foto.deskripsi}
+                        </p>
+                      )}
                     </div>
-
-                    <h3 className="text-sm font-bold text-slate-900 group-hover:text-emerald-800 transition-colors line-clamp-1">
-                      {foto.judul}
-                    </h3>
-
-                    {foto.deskripsi && (
-                      <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">
-                        {foto.deskripsi}
-                      </p>
-                    )}
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
 
           <div className="text-center pt-2">
             <button
@@ -725,76 +737,89 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           </div>
 
           {/* 6 Videos Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {summaryVideos.map(video => {
-              const badgeColors: Record<string, string> = {
-                PEMBUKAAN: 'bg-emerald-600 text-white',
-                OLAHRAGA: 'bg-blue-600 text-white',
-                SENI: 'bg-purple-600 text-white',
-                JUARA: 'bg-amber-500 text-slate-950 font-black',
-                HIGHLIGHT: 'bg-rose-600 text-white',
-                DOKUMENTASI: 'bg-slate-700 text-white',
-              };
-              const currentBadge = badgeColors[video.kategori] || 'bg-emerald-700 text-white';
+          {/* 6 Videos Grid or Clean Empty State */}
+          {summaryVideos.length === 0 ? (
+            <div className="py-12 px-4 bg-white rounded-2xl border-2 border-dashed border-slate-200 text-center space-y-2">
+              <div className="w-12 h-12 rounded-full bg-amber-50 text-amber-700 flex items-center justify-center mx-auto">
+                <VideoIcon className="w-6 h-6" />
+              </div>
+              <p className="text-xs font-bold text-slate-800">Belum Ada Tayangan Video Kegiatan</p>
+              <p className="text-[11px] text-slate-500 max-w-md mx-auto">
+                Liputan video dan siaran pertandingan PORSENI {settings.tahun} akan ditampilkan di sini setelah kegiatan perlombaan berlangsung.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {summaryVideos.map(video => {
+                const badgeColors: Record<string, string> = {
+                  PEMBUKAAN: 'bg-emerald-600 text-white',
+                  OLAHRAGA: 'bg-blue-600 text-white',
+                  SENI: 'bg-purple-600 text-white',
+                  JUARA: 'bg-amber-500 text-slate-950 font-black',
+                  HIGHLIGHT: 'bg-rose-600 text-white',
+                  DOKUMENTASI: 'bg-slate-700 text-white',
+                };
+                const currentBadge = badgeColors[video.kategori] || 'bg-emerald-700 text-white';
 
-              const thumb = getVideoThumbnail(video);
+                const thumb = getVideoThumbnail(video);
 
-              return (
-                <div
-                  key={video.id}
-                  className="bg-white rounded-2xl border-2 border-slate-200 shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden flex flex-col justify-between group"
-                >
+                return (
                   <div
-                    className="relative aspect-video overflow-hidden bg-slate-950 cursor-pointer"
-                    onClick={() => setActiveVideo(video)}
+                    key={video.id}
+                    className="bg-white rounded-2xl border-2 border-slate-200 shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden flex flex-col justify-between group"
                   >
-                    <img
-                      src={thumb}
-                      alt={video.judul}
-                      referrerPolicy="no-referrer"
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    />
+                    <div
+                      className="relative aspect-video overflow-hidden bg-slate-950 cursor-pointer"
+                      onClick={() => setActiveVideo(video)}
+                    >
+                      <img
+                        src={thumb}
+                        alt={video.judul}
+                        referrerPolicy="no-referrer"
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
 
-                    <div className="absolute top-3 left-3">
-                      <span className={`px-2.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider shadow-xs ${currentBadge}`}>
-                        {video.kategori}
-                      </span>
+                      <div className="absolute top-3 left-3">
+                        <span className={`px-2.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider shadow-xs ${currentBadge}`}>
+                          {video.kategori}
+                        </span>
+                      </div>
+
+                      {video.durasi && (
+                        <div className="absolute bottom-3 right-3 px-2 py-0.5 bg-black/80 backdrop-blur-xs rounded text-[11px] font-mono text-white font-bold flex items-center gap-1">
+                          <Clock className="w-3 h-3 text-amber-400" />
+                          <span>{video.durasi}</span>
+                        </div>
+                      )}
+
+                      <div className="absolute inset-0 bg-black/30 group-hover:bg-black/50 transition-colors flex items-center justify-center">
+                        <div className="w-14 h-14 rounded-full bg-amber-400 text-slate-950 flex items-center justify-center shadow-2xl group-hover:scale-110 transition-transform">
+                          <Play className="w-6 h-6 fill-slate-950 ml-0.5" />
+                        </div>
+                      </div>
                     </div>
 
-                    {video.durasi && (
-                      <div className="absolute bottom-3 right-3 px-2 py-0.5 bg-black/80 backdrop-blur-xs rounded text-[11px] font-mono text-white font-bold flex items-center gap-1">
-                        <Clock className="w-3 h-3 text-amber-400" />
-                        <span>{video.durasi}</span>
+                    <div className="p-4 space-y-1.5">
+                      <div className="flex items-center justify-between text-[10px] text-slate-400 font-mono">
+                        <span>{video.tanggal}</span>
+                        <span>PORSENI {settings.tahun}</span>
                       </div>
-                    )}
 
-                    <div className="absolute inset-0 bg-black/30 group-hover:bg-black/50 transition-colors flex items-center justify-center">
-                      <div className="w-14 h-14 rounded-full bg-amber-400 text-slate-950 flex items-center justify-center shadow-2xl group-hover:scale-110 transition-transform">
-                        <Play className="w-6 h-6 fill-slate-950 ml-0.5" />
-                      </div>
+                      <h3 className="text-sm font-bold text-slate-900 group-hover:text-emerald-800 transition-colors line-clamp-1">
+                        {video.judul}
+                      </h3>
+
+                      {video.deskripsi && (
+                        <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">
+                          {video.deskripsi}
+                        </p>
+                      )}
                     </div>
                   </div>
-
-                  <div className="p-4 space-y-1.5">
-                    <div className="flex items-center justify-between text-[10px] text-slate-400 font-mono">
-                      <span>{video.tanggal}</span>
-                      <span>PORSENI {settings.tahun}</span>
-                    </div>
-
-                    <h3 className="text-sm font-bold text-slate-900 group-hover:text-emerald-800 transition-colors line-clamp-1">
-                      {video.judul}
-                    </h3>
-
-                    {video.deskripsi && (
-                      <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">
-                        {video.deskripsi}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
 
           <div className="text-center pt-2">
             <button

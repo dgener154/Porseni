@@ -28,12 +28,8 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   onClose,
 }) => {
   const [selectedRole, setSelectedRole] = useState<UserRole>(initialRole);
-  const [identifier, setIdentifier] = useState(
-    initialRole === 'ADMIN' ? 'admin@porseni.go.id' : 'operator@man1malang.sch.id'
-  );
-  const [password, setPassword] = useState(
-    initialRole === 'ADMIN' ? 'admin123' : '123456'
-  );
+  const [identifier, setIdentifier] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [isCaptchaVerified, setIsCaptchaVerified] = useState(true);
@@ -43,18 +39,24 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   const handleRoleChange = (role: UserRole) => {
     setSelectedRole(role);
     setErrorMsg('');
-    if (role === 'ADMIN') {
-      setIdentifier('admin@porseni.go.id');
-      setPassword('admin123');
-    } else {
-      setIdentifier('operator@man1malang.sch.id');
-      setPassword('123456');
-    }
+    setIdentifier('');
+    setPassword('');
   };
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
+
+    if (!identifier.trim()) {
+      setErrorMsg('Username atau Email wajib diisi.');
+      return;
+    }
+
+    if (!password.trim()) {
+      setErrorMsg('Kata sandi wajib diisi.');
+      return;
+    }
+
     setIsCaptchaVerified(true);
     setLoading(true);
 
@@ -138,18 +140,31 @@ export const LoginModal: React.FC<LoginModalProps> = ({
             </div>
           )}
 
+          {/* Secure Portal Info Notice (No credentials revealed) */}
+          <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center gap-2.5 text-xs text-slate-600">
+            <div className="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0 font-bold">
+              <Lock className="w-3.5 h-3.5" />
+            </div>
+            <p className="text-[11px] leading-relaxed">
+              {selectedRole === 'ADMIN'
+                ? 'Silakan masukkan kredensial administrator panitia untuk mengakses panel kendali.'
+                : 'Silakan masukkan email / username dan kata sandi lembaga yang telah terverifikasi.'}
+            </p>
+          </div>
+
           <div>
             <label className="block text-xs font-bold text-slate-700 mb-1">
-              {selectedRole === 'ADMIN' ? 'Email / Username Administrator' : 'Username / Email Operator'}
+              {selectedRole === 'ADMIN' ? 'Email / Username Administrator' : 'Email / Username Operator Lembaga'}
             </label>
             <div className="relative">
               <User className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
               <input
                 type="text"
                 required
+                autoComplete="username"
                 value={identifier}
                 onChange={e => setIdentifier(e.target.value)}
-                placeholder={selectedRole === 'ADMIN' ? 'admin@porseni.go.id' : 'operator.man1'}
+                placeholder={selectedRole === 'ADMIN' ? 'Masukkan username atau email admin...' : 'Masukkan username atau email lembaga...'}
                 className="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-600"
               />
             </div>
@@ -171,6 +186,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               <input
                 type={showPassword ? 'text' : 'password'}
                 required
+                autoComplete="current-password"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
                 placeholder="Masukkan kata sandi..."

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { CodeGeneratorService } from '../../services/barcode';
-import { uploadAllToFirestore, downloadAllFromFirestore, isCloudOnline } from '../../services/firebase';
+import { uploadAllToFirestore, downloadAllFromFirestore, isCloudOnline, isQuotaExceeded } from '../../services/firebase';
 import {
   Smartphone,
   Laptop,
@@ -8,6 +8,7 @@ import {
   Copy,
   Check,
   Cloud,
+  CloudOff,
   RefreshCw,
   X,
   Share2,
@@ -17,6 +18,7 @@ import {
   Layers,
   ArrowRight,
   ExternalLink,
+  AlertTriangle,
 } from 'lucide-react';
 
 interface MultiDeviceModalProps {
@@ -34,6 +36,7 @@ export const MultiDeviceModal: React.FC<MultiDeviceModalProps> = ({
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>('');
   const [isSyncing, setIsSyncing] = useState(false);
   const [cloudStatus, setCloudStatus] = useState<boolean>(true);
+  const [quotaHit, setQuotaHit] = useState<boolean>(false);
 
   // App URL: prefer shared link or current origin
   const appUrl = typeof window !== 'undefined'
@@ -46,6 +49,7 @@ export const MultiDeviceModal: React.FC<MultiDeviceModalProps> = ({
         setQrCodeDataUrl(url);
       });
       setCloudStatus(isCloudOnline());
+      setQuotaHit(isQuotaExceeded());
     }
   }, [isOpen, appUrl]);
 
@@ -69,7 +73,8 @@ export const MultiDeviceModal: React.FC<MultiDeviceModalProps> = ({
         if (onShowToast) onShowToast('success', result.message);
         setCloudStatus(true);
       } else {
-        if (onShowToast) onShowToast('error', result.message);
+        if (onShowToast) onShowToast('warning', result.message);
+        if (isQuotaExceeded()) setQuotaHit(true);
       }
     } finally {
       setIsSyncing(false);
@@ -85,7 +90,8 @@ export const MultiDeviceModal: React.FC<MultiDeviceModalProps> = ({
         if (onShowToast) onShowToast('success', result.message);
         setCloudStatus(true);
       } else {
-        if (onShowToast) onShowToast('error', result.message);
+        if (onShowToast) onShowToast('warning', result.message);
+        if (isQuotaExceeded()) setQuotaHit(true);
       }
     } finally {
       setIsSyncing(false);
@@ -120,21 +126,39 @@ export const MultiDeviceModal: React.FC<MultiDeviceModalProps> = ({
 
         {/* Modal Body */}
         <div className="p-5 sm:p-6 overflow-y-auto space-y-6 text-slate-800">
+          {/* Quota limit notice banner if active */}
+          {quotaHit && (
+            <div className="p-4 rounded-xl bg-amber-50 border border-amber-300 flex items-start gap-3 text-amber-900 text-xs">
+              <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+              <div>
+                <strong className="font-bold text-amber-950 block mb-1">
+                  Batas Kuota Harian Cloud Tercapai (Spark Tier: 20.000 writes/hari)
+                </strong>
+                <p className="text-amber-800 text-[11px] leading-relaxed">
+                  Penulisan ke database cloud dijeda sementara dan kuota harian akan otomatis di-reset besok hari. 
+                  <strong> Seluruh fungsi aplikasi, cetak kartu, ekspor rekap, dan penyimpanan data lokal browser tetap berfungsi 100% normal dan aman.</strong>
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Cloud Status Card */}
           <div className="p-4 rounded-xl bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50 border border-emerald-200 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-lg bg-emerald-700 text-white flex items-center justify-center shrink-0">
-                <Cloud className="w-5 h-5" />
+                {quotaHit ? <CloudOff className="w-5 h-5 text-amber-200" /> : <Cloud className="w-5 h-5" />}
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                  <span className={`w-2.5 h-2.5 rounded-full ${quotaHit ? 'bg-amber-500' : 'bg-emerald-500 animate-pulse'}`}></span>
                   <span className="text-xs font-bold text-emerald-950">
-                    Cloud Firestore Real-Time Aktif
+                    {quotaHit ? 'Cloud Mode: Penyimpanan Lokal Aktif (Fallback)' : 'Cloud Firestore Real-Time Aktif'}
                   </span>
                 </div>
                 <p className="text-[11px] text-emerald-800 mt-0.5">
-                  Setiap penambahan atau perubahan data langsung tersinkronkan ke seluruh perangkat yang sedang membuka website ini secara otomatis.
+                  {quotaHit 
+                    ? 'Data tersimpan di penyimpanan browser perangkat ini dan akan siap disinkronkan kembali saat kuota cloud reset besok.'
+                    : 'Setiap penambahan atau perubahan data langsung tersinkronkan ke seluruh perangkat yang sedang membuka website ini secara otomatis.'}
                 </p>
               </div>
             </div>

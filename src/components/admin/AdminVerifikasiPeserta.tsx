@@ -211,7 +211,18 @@ _Panitia Pelaksana ${namaKegiatan}_`;
       status: 'SUKSES',
     });
 
-    window.open(url, '_blank', 'noopener,noreferrer');
+    try {
+      const link = document.createElement('a');
+      link.href = url;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch {
+      window.location.href = url;
+    }
+
     onShowToast('success', `Pesan WhatsApp telah disiapkan untuk dikirim ke nomor ${cleanNumber}.`);
     setWaModal(prev => ({ ...prev, isOpen: false }));
   };
