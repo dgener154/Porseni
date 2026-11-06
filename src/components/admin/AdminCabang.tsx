@@ -205,7 +205,7 @@ export const AdminCabang: React.FC<AdminCabangProps> = ({
             >
               <option value="">Semua Kategori (Olahraga & Seni)</option>
               <option value="OLAHRAGA">Khusus Olahraga</option>
-              <option value="SENI">Khusus Seni Budaya</option>
+              <option value="SENI">Khusus Seni</option>
             </select>
           </div>
         </div>
@@ -328,7 +328,7 @@ export const AdminCabang: React.FC<AdminCabangProps> = ({
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg"
                   >
                     <option value="OLAHRAGA">OLAHRAGA</option>
-                    <option value="SENI">SENI BUDAYA</option>
+                    <option value="SENI">SENI</option>
                   </select>
                 </div>
               </div>
